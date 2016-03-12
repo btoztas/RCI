@@ -40,9 +40,30 @@ int newudpclient(struct sockaddr_in *serveraddr, char *name, int chartype, char 
 		inet_pton(AF_INET, name, &((*serveraddr).sin_addr));
 		printf("oi\n");
 	}
-  (*serveraddr).sin_port=htons((u_short)atoi(port)); /*PORTA?*/
+  (*serveraddr).sin_port=htons((u_short)atoi(port)); 
   printf("2oi\n");
   return fd;
+}
+
+void QRY(char parametros[128], char *ip, char *port){
+  
+  int n;
+  int addrlen;
+  char buffer[128];
+
+  addrlen = sizeof((serveraddr));
+  sprintf(buffer, "REG %s.%s;%s;%s", name, surname, ip, scport);
+  printf("Mensagem enviada para o servidor: %s\n", buffer);
+  if(sendto(socketfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&(serveraddr), addrlen)==-1){
+    printf("Error sending\n");
+    exit(1);
+  }
+  if((n=recvfrom(socketfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&(serveraddr), &addrlen))==-1){
+    printf("Error on recvfrom\n");
+    exit(1);
+  }
+  buffer[n]='\0';
+  printf("%s\n",buffer);
 }
 
 void REG(char name[128], char surname[128], char ip[128], char scport[128], int socketfd, struct sockaddr_in serveraddr){
@@ -58,6 +79,12 @@ void REG(char name[128], char surname[128], char ip[128], char scport[128], int 
     printf("Error sending\n");
     exit(1);
   }
+  if((n=recvfrom(socketfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&(serveraddr), &addrlen))==-1){
+    printf("Error on recvfrom\n");
+    exit(1);
+  }
+  buffer[n]='\0';
+  printf("%s\n",buffer);
 }
 
 void UNR(char name[128], char surname[128], int socketfd, struct sockaddr_in serveraddr){
@@ -86,7 +113,7 @@ int main(int argc, char *argv[]){
 
 	int i;
 	char *name, *surname, 
-	ip[128], scport[128], snpip[128], snpport[128];
+	ip[128], scport[128], snpip[128], snpport[128], ipdooutro[128], portodooutro[128];
 
 	int sair=1;
 	
@@ -161,7 +188,7 @@ int main(int argc, char *argv[]){
 	      	UNR(name, surname, name_socket, name_server);
 	      	
 	      }else if(strcmp(cabecalho, "find")==0){
-	      	QRY(name, surname, name_socket, name_server);
+	      	QRY(parametros, &ipdooutro, &portodooutro);
 	      	
 	      }else if(strcmp(cabecalho, "connect")==0){
 	      	
