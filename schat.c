@@ -344,7 +344,7 @@ int main(int argc, char *argv[]){
 	      	UNR(name, surname, name_socket, name_server);
 	      	
 	      }else if(strcmp(cabecalho, "find")==0){
-	      	/*QRY(name, surname, name_socket, name_server);*/
+	      	QRY(name, surname, name_socket, name_server);
 	      	
 	      }else if(strcmp(cabecalho, "connect")==0){
 	      	

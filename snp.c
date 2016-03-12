@@ -367,10 +367,10 @@ int main(int argc, char *argv[]){
 
   me_socket=newudpserver(&serveraddr);
   
+  init(&row);
+  
    /*----------mini-teste-------------*/
   
-  
-  init(&row);
   
   /*readData(&ipport);
   
