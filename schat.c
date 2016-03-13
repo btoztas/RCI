@@ -44,12 +44,9 @@ int newudpclient(struct sockaddr_in *serveraddr, char *name, int chartype, char 
   printf("2oi\n");
   return fd;
 }
-/*
-void QRY(char parametros[128], char *ip, char *port){
-=======
 
+/*
 void QRY(char parametros[128], char *ip, char *port, int socketfd, struct sockaddr_in serveraddr){
->>>>>>> 95b3e55c880c51809803bb6b9d5a6117e94a915b
   
   int n;
   int addrlen;
@@ -69,15 +66,13 @@ void QRY(char parametros[128], char *ip, char *port, int socketfd, struct sockad
   }
   buffer[n]='\0';
   printf("%s\n",buffer);
-<<<<<<< HEAD
 }*/
 
-void REG(char name[128], char surname[128], char ip[128], char scport[128], int socketfd, struct sockaddr_in serveraddr){
-  
-  int n;
+int sendMensage(char *buffer, int socketfd, struct sockaddr_in serveraddr){
+
   int addrlen;
-  char buffer[128];
-  
+  int n;
+
   int counter;
   struct timeval tv;
   fd_set funcfds;
@@ -88,11 +83,11 @@ void REG(char name[128], char surname[128], char ip[128], char scport[128], int 
   tv.tv_usec = 0;
   FD_ZERO(&funcfds);
   FD_SET(socketfd, &funcfds);
-  
+
+  char msgReceived[128];
+
   addrlen = sizeof((serveraddr));
-  sprintf(buffer, "REG %s.%s;%s;%s", name, surname, ip, scport);
-  printf("Mensagem enviada para o servidor: %s\n", buffer);
-  
+
   for( i = 0; i < 3; i++){
     if(sendto(socketfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&(serveraddr), addrlen)==-1){
       printf("Error sending\n");
@@ -103,12 +98,12 @@ void REG(char name[128], char surname[128], char ip[128], char scport[128], int 
       printf("Error on select\n");
       exit(4);
     }else if(counter>0){
-      if((n=recvfrom(socketfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&(serveraddr), &addrlen))==-1){
+      if((n=recvfrom(socketfd, msgReceived, sizeof(msgReceived), 0, (struct sockaddr*)&(serveraddr), &addrlen))==-1){
         printf("Error on recvfrom\n");
         exit(1);
       }
-      buffer[n]='\0';
-      printf("%s\n",buffer);
+      msgReceived[n]='\0';
+      printf("%s\n",msgReceived);
       i=3;
       sent=1;
     }else{
@@ -118,54 +113,28 @@ void REG(char name[128], char surname[128], char ip[128], char scport[128], int 
   if(!sent){
     printf("Não foi possivel o envio da mensagem, tente novamente mais tarde.\n");
   }  
+  return sent;
+}
+
+void REG(char name[128], char surname[128], char ip[128], char scport[128], int socketfd, struct sockaddr_in serveraddr){
+  char buffer[128];
+
+  sprintf(buffer, "REG %s.%s;%s;%s", name, surname, ip, scport);
+  printf("Mensagem enviada para o servidor: %s\n", buffer);
+  sendMensage(buffer, socketfd, serveraddr);
+
+  return; 
 }
 
 void UNR(char name[128], char surname[128], int socketfd, struct sockaddr_in serveraddr){
   
-  int n;
-  int addrlen;
   char buffer[128];
-  
-  int counter;
-  struct timeval tv;
-  fd_set funcfds;
-  int i;
-  int sent=0;
 
-  tv.tv_sec = 3;
-  tv.tv_usec = 0;
-  FD_ZERO(&funcfds);
-  FD_SET(socketfd, &funcfds);
-  
-  addrlen = sizeof((serveraddr));
   sprintf(buffer, "UNR %s.%s", name, surname);
   printf("Mensagem enviada para o servidor: %s\n", buffer);
-  
-  for( i = 0; i < 3; i++){
-    if(sendto(socketfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&(serveraddr), addrlen)==-1){
-      printf("Error sending\n");
-      exit(1);
-    }
-    counter = select(socketfd+1, &funcfds, NULL, NULL, &tv);
-    if(counter<0){
-      printf("Error on select\n");
-      exit(4);
-    }else if(counter>0){
-      if((n=recvfrom(socketfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&(serveraddr), &addrlen))==-1){
-        printf("Error on recvfrom\n");
-        exit(1);
-      }
-      buffer[n]='\0';
-      printf("%s\n",buffer);
-      i=3;
-      sent=1;
-    }else{
-      printf("Erro no envio da mensagem, a tentar novamente...(tentativa %d)\n", i+1);
-    }
-  }
-  if(!sent){
-    printf("Não foi possivel o envio da mensagem, tente novamente mais tarde.\n");
-  }  
+  sendMensage(buffer, socketfd, serveraddr);
+
+  return;
 }
 
 int main(int argc, char *argv[]){
@@ -185,36 +154,40 @@ int main(int argc, char *argv[]){
 
   struct sockaddr_in name_server;
   int name_socket;
-
-	for(i=1; i<argc; i=i+2){
-
-    switch(argv[i][1]){
-      
-      case 's':
-      	strcpy(snpip, argv[i+1]);
-      break;
-
-      case 'n':
-      	name=strtok(argv[i+1], ".");
-      	surname=strtok(NULL, "\0");
-      break;
-      
-      case 'q':
-      	strcpy(snpport, argv[i+1]);
-      break;
-      
-      case 'i':
-      	strcpy(ip, argv[i+1]);
-      break;
-      
-      case 'p':
-      	strcpy(scport, argv[i+1]);
-      break;
-      
-      default:
-	      printf("Sem parametros. Saindo.\n");
-	      exit(-1);
-      break;
+  if(argc!=11){
+    printf("Algo errado com os parametros colocados, por favor reveja-os.\n");
+    exit(4);
+  }else{
+    for(i=1; i<argc; i=i+2){
+  
+      switch(argv[i][1]){
+        
+        case 's':
+          strcpy(snpip, argv[i+1]);
+        break;
+  
+        case 'n':
+          name=strtok(argv[i+1], ".");
+          surname=strtok(NULL, "\0");
+        break;
+        
+        case 'q':
+          strcpy(snpport, argv[i+1]);
+        break;
+        
+        case 'i':
+          strcpy(ip, argv[i+1]);
+        break;
+        
+        case 'p':
+          strcpy(scport, argv[i+1]);
+        break;
+        
+        default:
+          printf("Sem parametros. Saindo.\n");
+          exit(-1);
+        break;
+      }
     }
   }
   printf("name: %s\nsurname: %s\nsnpip: %s\nsnpport: %s\nsaip: %s\nscport: %s\n", name, surname, snpip, snpport, ip, scport);
@@ -257,7 +230,8 @@ int main(int argc, char *argv[]){
 	      	
 	      }else if(strcmp(cabecalho, "exit")==0){
 	      	sair=0;
-	      	
+	      }else if(strcmp(cabecalho, "clear")==0){
+          printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
 	      }else{
 					printf("Cabecalho (%s) do comando introduzido nao reconhecido\n", cabecalho);
 	      }

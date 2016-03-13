@@ -83,7 +83,6 @@ void add(Row *row, localization x){
 }
  
 void printlist(Row row){
-  int i;
   List *aux;
   
   if(row.size==0){
@@ -136,20 +135,20 @@ void removeList(Row *row, char *name){
           aux1=aux->next;
           row->first=aux->next;
           free(aux);
-          i=i++;
-            aux=aux1;
+          i++;
+          aux=aux1;
         }
         else if(aux==row->last){
           row->last=aux1;
           free(aux);
-          i=i++;
-            aux=aux1;
+          i++;
+          aux=aux1;
         }
         else{
-            aux1->next=aux->next;
-            free(aux);
-            i=i++;
-            aux=aux1;
+          aux1->next=aux->next;
+          free(aux);
+          i++;
+          aux=aux1;
         }
       }
       else
@@ -286,12 +285,11 @@ void REG(char parametros[128], Row *row, int socketfd, struct sockaddr_in server
 }
 
 void UNR(char parametros[128], Row *row, int socketfd, struct sockaddr_in serveraddr){
-  char *name, *surname;
+  char *name;
   char buffer[128];
   int addrlen;
 
   name=strtok(parametros, ".");
-  surname=strtok(NULL, "\0");
 
   if(!searchList(*row, name)){
     addrlen = sizeof(serveraddr);
@@ -356,7 +354,7 @@ int SQRY(char surname[128], int socketfd, struct sockaddr_in serveraddr){
 int main(int argc, char *argv[]){
   
   int i;
-  char surname[128], snpip[128], snpport[128], saip[128], saport[128], al[64];
+  char surname[128], snpip[128], snpport[128], saip[128], saport[128];
   char cabecalho[128], parametros[128];
   int me_socket, addrlen, surname_socket;
   int sair=1;
@@ -366,48 +364,61 @@ int main(int argc, char *argv[]){
   int maxfd, counter;
   char buffer[128];
   int len;
+
   Row row;
-  localization ipport;
-  
-  for(i=1; i<argc; i=i+2){
-    
-    switch(argv[i][1]){
-     
-      case 'n':
-        strcpy(surname, argv[i+1]);
-      break;
+  init(&row);
+
+  printf("%d\n",argc);
+
+  if(argc!=7 && argc!=11){
+    printf("Algo errado com os parametros colocados, por favor reveja-os.\n");
+    exit(4);
+  }else{
+    for(i=1; i<argc; i=i+2){
       
-      case 's':
-        strcpy(snpip, argv[i+1]);
-      break;
-      
-      case 'q':
-        strcpy(snpport, argv[i+1]);
-      break;
-      
-      case 'i':
-        strcpy(saip, argv[i+1]);
-      break;
-      
-      case 'p':
-        strcpy(saport, argv[i+1]);
-      break;
-      
-      default:
-        printf("Sem parametros. Saindo.\n");
-        exit(-1);
-      break;
+      switch(argv[i][1]){
+       
+        case 'n':
+          strcpy(surname, argv[i+1]);
+        break;
+        
+        case 's':
+          strcpy(snpip, argv[i+1]);
+        break;
+        
+        case 'q':
+          strcpy(snpport, argv[i+1]);
+        break;
+        
+        case 'i':
+          strcpy(saip, argv[i+1]);
+        break;
+        
+        case 'p':
+          strcpy(saport, argv[i+1]);
+        break;
+        
+        default:
+          printf("Sem parametros. Saindo.\n");
+          exit(-1);
+        break;
+      }
     }
   }
   
   printf("surname: %s\nsnpip: %s\nsnpport: %s\nsaip: %s\nsaport: %s\n", surname, snpip, snpport, saip, saport);
-  
-  surname_socket = newudpclient(&surname_server, "tejo.tecnico.ulisboa.pt", NAME, "58000");
+  int type = IP;
+  if(argc!=11){
+    strcpy(saport, "58000");
+    strcpy(saip, "tejo.tecnico.ulisboa.pt");
+    type = NAME;
+  }
+
+  surname_socket = newudpclient(&surname_server, saip, type, saport);
+
   SREG(surname,snpip,snpport,surname_socket,surname_server);
 
   me_socket=newudpserver(&serveraddr);
-  
-  init(&row);
   
    /*----------mini-teste-------------*/
   
@@ -480,9 +491,10 @@ int main(int argc, char *argv[]){
           close(me_socket);
           close(surname_socket);
           /*Enviar mensagem de UNRG*/
-        }
-        if(strcmp(buffer, "list")==0){
+        }else if(strcmp(buffer, "list")==0){
           printlist(row);
+        }else if(strcmp(buffer, "clear")==0){
+          printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
         }
       }else{
 
