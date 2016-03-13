@@ -162,7 +162,7 @@ void removeList(Row *row, char *name){
   row->size=(row->size)-1;
 }
 
-int newudpserver(struct sockaddr_in *serveraddr){
+int newudpserver(struct sockaddr_in *serveraddr, char port[128]){
 
   int fd;
 
@@ -175,7 +175,7 @@ int newudpserver(struct sockaddr_in *serveraddr){
   memset((void*)&(*serveraddr),(int)'\0',sizeof((*serveraddr)));
   (*serveraddr).sin_family=AF_INET;
   (*serveraddr).sin_addr.s_addr=htonl(INADDR_ANY);
-  (*serveraddr).sin_port=htons((u_short)PORT);
+  (*serveraddr).sin_port=htons((u_short)atoi(port));
 
   return fd;
 }
@@ -512,7 +512,7 @@ int main(int argc, char *argv[]){
 
   SREG(surname,snpip,snpport,surname_socket,surname_server);
 
-  me_socket=newudpserver(&me_server);
+  me_socket=newudpserver(&me_server, snpport);
   
    /*----------mini-teste-------------*/
   
