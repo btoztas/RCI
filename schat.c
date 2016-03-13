@@ -68,7 +68,7 @@ void QRY(char parametros[128], char *ip, char *port, int socketfd, struct sockad
   printf("%s\n",buffer);
 }*/
 
-char *sendProtocolMessage(char *buffer, int socketfd, struct sockaddr_in serveraddr){
+int sendProtocolMessage(char *buffer, int socketfd, struct sockaddr_in serveraddr){
 
   int addrlen;
   int n;
@@ -86,7 +86,9 @@ char *sendProtocolMessage(char *buffer, int socketfd, struct sockaddr_in servera
 
   addrlen = sizeof((serveraddr));
 
-  for( i = 0; i < 3; i++){
+  char msgReceived[128];
+
+  for( i = 0; i < 1; i++){
     if(sendto(socketfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&(serveraddr), addrlen)==-1){
       printf("Error sending\n");
       exit(1);
@@ -96,12 +98,13 @@ char *sendProtocolMessage(char *buffer, int socketfd, struct sockaddr_in servera
       printf("Error on select\n");
       exit(4);
     }else if(counter>0){
-      if((n=recvfrom(socketfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&(serveraddr), &addrlen))==-1){
+      if((n=recvfrom(socketfd, msgReceived, sizeof(msgReceived), 0, (struct sockaddr*)&(serveraddr), &addrlen))==-1){
         printf("Error on recvfrom\n");
         exit(1);
       }
-      buffer[n]='\0';
-      printf("%s\n",buffer);
+
+      msgReceived[n]='\0';
+      printf("%s\n",msgReceived);
       i=3;
       sent=1;
     }else{
@@ -110,29 +113,29 @@ char *sendProtocolMessage(char *buffer, int socketfd, struct sockaddr_in servera
   }
   if(!sent){
     printf("Não foi possivel o envio da mensagem, tente novamente mais tarde.\n");
-  }  
-  return buffer;
+  }
+  strcpy(buffer, msgReceived);
+  return sent;
 }
 
 void REG(char name[128], char surname[128], char ip[128], char scport[128], int socketfd, struct sockaddr_in serveraddr){
-  char buffer[128];
+  char *buffer;
+  buffer = calloc(128, sizeof(char));
 
   sprintf(buffer, "REG %s.%s;%s;%s", name, surname, ip, scport);
   printf("Mensagem enviada: %s\n", buffer);
   sendProtocolMessage(buffer, socketfd, serveraddr);
-
-  return; 
 }
 
 void UNR(char name[128], char surname[128], int socketfd, struct sockaddr_in serveraddr){
   
-  char buffer[128];
+  char *buffer;
+
+  buffer = calloc(128, sizeof(char));
 
   sprintf(buffer, "UNR %s.%s", name, surname);
   printf("Mensagem enviada: %s\n", buffer);
-  sendProtocolMessage(buffer, socketfd, serveraddr);
-
-  return;
+  sendProtocolMessage(buffer, socketfd, serveraddr);  
 }
 
 int main(int argc, char *argv[]){
@@ -210,7 +213,7 @@ int main(int argc, char *argv[]){
 	      if (buffer[len] == '\n')
 	        buffer[len] = '\0';
 	      sscanf(buffer, "%s %s", cabecalho, parametros);
-	      printf("Mensagem Recebida: %s\nCabecalho: %s\nParametros: %s\n", buffer, cabecalho, parametros);
+	      printf("Comando: %s\nCabecalho: %s\nParametros: %s\n", buffer, cabecalho, parametros);
 	      if(strcmp(cabecalho, "join")==0){
 	      	REG(name, surname, ip, scport, name_socket, name_server);
 

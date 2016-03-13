@@ -102,12 +102,16 @@ void printlist(Row row){
   return;
 }
 
-int searchList(Row row, char *name){
+int searchList(Row row, localization *result, char *name){
   List *aux;
   
   for(aux=row.first;aux!=NULL;aux=aux->next){
     if(strcmp((aux->data).name, name)==0){
-      printf("ola\n");
+      if(result!=NULL){
+        strcpy(result->port, (aux->data).port);
+        strcpy(result->ip, (aux->data).ip);
+        strcpy(result->name, (aux->data).name);
+      }
       return 1;
     }
   }
@@ -202,12 +206,10 @@ int newudpclient(struct sockaddr_in *serveraddr, char *name, int chartype, char 
   (*serveraddr).sin_port=htons((u_short)atoi(port)); /*PORTA?*/
   return fd;
 }
-
-void *sendProtocolMessage(char *buffer, int socketfd, struct sockaddr_in serveraddr){
+int sendProtocolMessage(char *buffer, int socketfd, struct sockaddr_in serveraddr){
 
   int addrlen;
   int n;
-
 
   int counter;
   struct timeval tv;
@@ -222,7 +224,9 @@ void *sendProtocolMessage(char *buffer, int socketfd, struct sockaddr_in servera
 
   addrlen = sizeof((serveraddr));
 
-  for( i = 0; i < 3; i++){
+  char msgReceived[128];
+
+  for( i = 0; i < 1; i++){
     if(sendto(socketfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&(serveraddr), addrlen)==-1){
       printf("Error sending\n");
       exit(1);
@@ -232,13 +236,13 @@ void *sendProtocolMessage(char *buffer, int socketfd, struct sockaddr_in servera
       printf("Error on select\n");
       exit(4);
     }else if(counter>0){
-      if((n=recvfrom(socketfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&(serveraddr), &addrlen))==-1){
+      if((n=recvfrom(socketfd, msgReceived, sizeof(msgReceived), 0, (struct sockaddr*)&(serveraddr), &addrlen))==-1){
         printf("Error on recvfrom\n");
         exit(1);
       }
-      printf("%d\n", n);
-      buffer[n]='\0';
-      printf("%s\n",buffer);
+
+      msgReceived[n]='\0';
+      printf("%s\n",msgReceived);
       i=3;
       sent=1;
     }else{
@@ -248,10 +252,12 @@ void *sendProtocolMessage(char *buffer, int socketfd, struct sockaddr_in servera
   if(!sent){
     printf("Não foi possivel o envio da mensagem, tente novamente mais tarde.\n");
   }
+  strcpy(buffer, msgReceived);
+  return sent;
 }
-
 void SREG(char surname[128], char ip[128], char port[128], int socketfd, struct sockaddr_in serveraddr){
-  char buffer[128];
+  char *buffer;
+  buffer = calloc(128, sizeof(char));
 
   sprintf(buffer, "SREG %s;%s;%s", surname, ip, port);
   printf("Mensagem enviada: %s\n", buffer);
@@ -259,7 +265,8 @@ void SREG(char surname[128], char ip[128], char port[128], int socketfd, struct 
 }
 
 void SUNR(char surname[128], int socketfd, struct sockaddr_in serveraddr){
-  char buffer[128];
+  char *buffer;
+  buffer = calloc(128, sizeof(char));
 
   sprintf(buffer, "SUNR %s", surname);
   printf("Mensagem enviada: %s\n", buffer);
@@ -277,7 +284,7 @@ void REG(char parametros[128], Row *row, int socketfd, struct sockaddr_in server
   ip=strtok(NULL, ";");
   port=strtok(NULL, "\0"); 
 
-  if(searchList(*row, name)){
+  if(searchList(*row, NULL ,name)){
     addrlen = sizeof(serveraddr);
     sprintf(buffer, "NOK Name already registered\n");
     printf("Mensagem enviada: %s\n", buffer);
@@ -285,23 +292,23 @@ void REG(char parametros[128], Row *row, int socketfd, struct sockaddr_in server
       printf("Error sending\n");
       exit(1);
     }
-    return;
-  }
-
-  strcpy(ipport.name, name);
-  strcpy(ipport.surname, surname);
-  strcpy(ipport.ip, ip);
-  strcpy(ipport.port, port);
+  }else{
   
-
-  add(row, ipport);
-
-  addrlen = sizeof(serveraddr);
-  sprintf(buffer, "OK\n");
-  printf("Mensagem enviada: %s\n", buffer);
-  if(sendto(socketfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&serveraddr, addrlen)==-1){
-    printf("Error sending\n");
-    exit(1);
+    strcpy(ipport.name, name);
+    strcpy(ipport.surname, surname);
+    strcpy(ipport.ip, ip);
+    strcpy(ipport.port, port);
+    
+  
+    add(row, ipport);
+  
+    addrlen = sizeof(serveraddr);
+    sprintf(buffer, "OK\n");
+    printf("Mensagem enviada: %s\n", buffer);
+    if(sendto(socketfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&serveraddr, addrlen)==-1){
+      printf("Error sending\n");
+      exit(1);
+    }
   }
 }
 
@@ -312,7 +319,7 @@ void UNR(char parametros[128], Row *row, int socketfd, struct sockaddr_in server
 
   name=strtok(parametros, ".");
 
-  if(!searchList(*row, name)){
+  if(!searchList(*row, NULL ,name)){
     addrlen = sizeof(serveraddr);
     sprintf(buffer, "NOK Name not registered\n");
     printf("Mensagem enviada: %s\n", buffer);
@@ -321,52 +328,121 @@ void UNR(char parametros[128], Row *row, int socketfd, struct sockaddr_in server
       exit(1);
     }
     return;
-  }
+  }else{
+    
+    removeList(row, name);
   
-  removeList(row, name);
-
-  addrlen = sizeof(serveraddr);
-  sprintf(buffer, "OK\n");
-  printf("Mensagem enviada: %s\n", buffer);
-  if(sendto(socketfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&serveraddr, addrlen)==-1){
-    printf("Error sending\n");
-    exit(1);
+    addrlen = sizeof(serveraddr);
+    sprintf(buffer, "OK\n");
+    printf("Mensagem enviada: %s\n", buffer);
+    if(sendto(socketfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&serveraddr, addrlen)==-1){
+      printf("Error sending\n");
+      exit(1);
+    }
   }
 }
 
-void SRPL(char parametros[128]){
-  char *surname, *snpip, *scport;
+void SRPL(char name[128], char parametros[128], int me_socket, struct sockaddr_in me_server){
+  char *surname, *snpip, *snpport;
+  int contactsnp_socket;
+  struct sockaddr_in contactsnp_server;
+
+  int addrlen;
+  char *buffer;
+  buffer = calloc(128, sizeof(char));
+  char warning[128];
 
   surname=strtok(parametros, ";");
   snpip=strtok(NULL, ";");
-  scport=strtok(NULL, "\0");
+  snpport=strtok(NULL, "\0");
+
+  sprintf(buffer, "QRY %s.%s", name, surname);
+  printf("Mensagem enviada: %s\n", buffer);
+
+  contactsnp_socket = newudpclient(&contactsnp_server, snpip, IP, snpport);
+
+  if(!sendProtocolMessage(buffer, contactsnp_socket, contactsnp_server)){
+    addrlen = sizeof(me_server);
+    sprintf(warning, "NOK - Could not reach name server surname server gave...\n");
+    printf("Mensagem enviada: %s\n", warning);
+    if(sendto(me_socket, warning, strlen(warning)+1, 0, (struct sockaddr*)&me_server, addrlen)==-1){
+      printf("Error sending\n");
+      exit(1);
+    }
+  }
+  addrlen = sizeof(me_server);
+  printf("Mensagem enviada: %s\n", buffer);
+  if(sendto(me_socket, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&me_server, addrlen)==-1){
+    printf("Error sending\n");
+    exit(1);
+  }
+
 }
 
-void QRY(char parametros[128]){
-  char *name, *surname;
+void SQRY(char name[128], char surname[128], int surname_socket, struct sockaddr_in surname_server, int me_socket, struct sockaddr_in me_server){
+  char *buffer;
+  buffer = calloc(128, sizeof(char));
 
-  name=strtok(parametros, ".");
-  surname=strtok(NULL, "\0");
-}
-
-void RPL(char parametros[128]){
-  char *name, *surname, *scip, *scport;
-
-  name=strtok(parametros, ".");
-  surname=strtok(NULL, ";");
-  scip=strtok(NULL, ";");
-  scport=strtok(NULL, "\0");
-}
+  char cabecalho[128], parametros[128];
   
-void SQRY(char surname[128], int socketfd, struct sockaddr_in serveraddr){
+  int addrlen;
+  char warning[128];
 
-  char buffer[128], *msgReceived;
-  
   sprintf(buffer, "SQRY %s", surname);
   printf("Mensagem enviada: %s\n", buffer);
-  sendProtocolMessage(buffer, socketfd, serveraddr);
-  printf("%s\n",buffer);
+  if(!sendProtocolMessage(buffer, surname_socket, surname_server)){
+    addrlen = sizeof(me_server);
+    sprintf(warning, "NOK - Could not reach surname server...\n");
+    printf("Mensagem enviada: %s\n", warning);
+    if(sendto(me_socket, warning, strlen(warning)+1, 0, (struct sockaddr*)&me_server, addrlen)==-1){
+      printf("Error sending\n");
+      exit(1);
+    }
+  }else{
+    if(strcmp(buffer, "SRPL")==0){
+      addrlen = sizeof(me_server);
+      sprintf(warning, "RPL");
+      printf("Mensagem enviada: %s\n", warning);
+      if(sendto(me_socket, warning, strlen(warning)+1, 0, (struct sockaddr*)&me_server, addrlen)==-1){
+        printf("Error sending\n");
+        exit(1);
+      }
+    }else{
+      sscanf(buffer, "%s %s", cabecalho, parametros);
+      SRPL(name, parametros, me_socket, me_server);
+    }
+  }
+}
 
+void QRY(char me_surname[128], char parametros[128], int surname_socket, struct sockaddr_in surname_server, int me_socket, struct sockaddr_in me_server, Row row){
+  char *name, *surname;
+  char buffer[128];
+  int addrlen;
+  localization info;
+  name=strtok(parametros, ".");
+  surname=strtok(NULL, "\0");
+
+  if(strcmp(me_surname, surname)==0){
+    if(searchList(row, &info, name)){
+      addrlen = sizeof(me_server);
+      sprintf(buffer, "RPL %s.%s;%s;%s", info.name, info.surname, info.ip, info.port);
+      printf("Mensagem enviada: %s\n", buffer);
+      if(sendto(me_socket, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&me_server, addrlen)==-1){
+        printf("Error sending\n");
+        exit(1);
+      }
+    }else{
+      addrlen = sizeof(me_server);
+      sprintf(buffer, "RPL");
+      printf("Mensagem enviada: %s\n", buffer);
+      if(sendto(me_socket, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&me_server, addrlen)==-1){
+        printf("Error sending\n");
+        exit(1);
+      }
+    }
+  }else{
+    SQRY(name, surname, surname_socket, surname_server, me_socket, me_server);
+  }
 }
 
 int main(int argc, char *argv[]){
@@ -376,7 +452,7 @@ int main(int argc, char *argv[]){
   char cabecalho[128], parametros[128];
   int me_socket, addrlen, surname_socket;
   int sair=1;
-  struct sockaddr_in serveraddr, surname_server;
+  struct sockaddr_in me_server, surname_server;
 
   fd_set rfds;
   int maxfd, counter;
@@ -436,7 +512,7 @@ int main(int argc, char *argv[]){
 
   SREG(surname,snpip,snpport,surname_socket,surname_server);
 
-  me_socket=newudpserver(&serveraddr);
+  me_socket=newudpserver(&me_server);
   
    /*----------mini-teste-------------*/
   
@@ -477,7 +553,7 @@ int main(int argc, char *argv[]){
   
   /*------------------------------------*/
   
-  if(bind(me_socket, (struct sockaddr*)&serveraddr, sizeof(serveraddr)) < 0){
+  if(bind(me_socket, (struct sockaddr*)&me_server, sizeof(me_server)) < 0){
     printf("Error on binding\n");
     exit(1);
   }
@@ -501,7 +577,7 @@ int main(int argc, char *argv[]){
         len = strlen(buffer) - 1;
         if (buffer[len] == '\n')
           buffer[len] = '\0';
-        printf("Mensagem: %s\n",buffer);
+        printf("Comando: %s\n",buffer);
         
         if(strcmp(buffer, "exit")==0){
           sair=0;
@@ -517,8 +593,8 @@ int main(int argc, char *argv[]){
       }else{
 
         if(FD_ISSET(me_socket, &rfds)){
-          addrlen = sizeof(serveraddr);
-          if((len=recvfrom(me_socket, buffer, sizeof(buffer), 0, (struct sockaddr*)&serveraddr, &addrlen))==-1){
+          addrlen = sizeof(me_server);
+          if((len=recvfrom(me_socket, buffer, sizeof(buffer), 0, (struct sockaddr*)&me_server, &addrlen))==-1){
             printf("Error on recvfrom on socket %d\n", surname_socket);
             exit(1);
           }
@@ -535,31 +611,15 @@ int main(int argc, char *argv[]){
         printf("Mensagem Recebida: %s\nCabecalho: %s\nParametros: %s\n", buffer, cabecalho, parametros);
         switch(cabecalho[0]){
           case 'R':
-            switch(cabecalho[1]){
-              case 'E':
-                REG(parametros, &row, me_socket, serveraddr);
-              break;
-
-              case 'P':
-                RPL(parametros);
-              break;
-
-              default:
-                printf("Cabecalho (%s) da mensagem nao reconhecido\n", cabecalho);
-              break;
-            }
+            REG(parametros, &row, me_socket, me_server);
           break;
 
           case 'U':
-            SQRY("Goncalves", surname_socket, surname_server);
-          break;
-
-          case 'S':
-            SRPL(parametros);
+             UNR(parametros, &row, me_socket, me_server);
           break;
 
           case 'Q':
-            SQRY("Goncalves", me_socket, serveraddr);
+            QRY(surname, parametros, surname_socket, surname_server, me_socket, me_server, row);
           break;
 
           default:
