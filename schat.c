@@ -138,6 +138,15 @@ void UNR(char name[128], char surname[128], int socketfd, struct sockaddr_in ser
   sendProtocolMessage(buffer, socketfd, serveraddr);  
 }
 
+void QRY(char parametros[128], int socketfd, struct sockaddr_in serveraddr){
+  char *buffer;
+  buffer = calloc(128, sizeof(char));
+
+  sprintf(buffer, "QRY %s", parametros);
+  printf("Mensagem enviada: %s\n", buffer);
+  sendProtocolMessage(buffer, socketfd, serveraddr);
+}
+
 int main(int argc, char *argv[]){
 
 	int i;
@@ -221,8 +230,8 @@ int main(int argc, char *argv[]){
 	      	UNR(name, surname, name_socket, name_server);
 	      	
 	      }else if(strcmp(cabecalho, "find")==0){
-	      /*	QRY(parametros, ipdooutro, portodooutro, name_socket, name_server);
-	      	printf("Ip:%s Porto:%s\n", ipdooutro, portodooutro);*/
+          QRY(parametros, name_socket, name_server);
+
 	      }else if(strcmp(cabecalho, "connect")==0){
 	      	
 	      }else if(strcmp(cabecalho, "message")==0){
