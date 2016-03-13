@@ -68,7 +68,7 @@ void QRY(char parametros[128], char *ip, char *port, int socketfd, struct sockad
   printf("%s\n",buffer);
 }*/
 
-int sendMensage(char *buffer, int socketfd, struct sockaddr_in serveraddr){
+char *sendMensage(char *buffer, int socketfd, struct sockaddr_in serveraddr){
 
   int addrlen;
   int n;
@@ -84,8 +84,6 @@ int sendMensage(char *buffer, int socketfd, struct sockaddr_in serveraddr){
   FD_ZERO(&funcfds);
   FD_SET(socketfd, &funcfds);
 
-  char msgReceived[128];
-
   addrlen = sizeof((serveraddr));
 
   for( i = 0; i < 3; i++){
@@ -98,12 +96,12 @@ int sendMensage(char *buffer, int socketfd, struct sockaddr_in serveraddr){
       printf("Error on select\n");
       exit(4);
     }else if(counter>0){
-      if((n=recvfrom(socketfd, msgReceived, sizeof(msgReceived), 0, (struct sockaddr*)&(serveraddr), &addrlen))==-1){
+      if((n=recvfrom(socketfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&(serveraddr), &addrlen))==-1){
         printf("Error on recvfrom\n");
         exit(1);
       }
-      msgReceived[n]='\0';
-      printf("%s\n",msgReceived);
+      buffer[n]='\0';
+      printf("%s\n",buffer);
       i=3;
       sent=1;
     }else{
@@ -113,7 +111,7 @@ int sendMensage(char *buffer, int socketfd, struct sockaddr_in serveraddr){
   if(!sent){
     printf("Não foi possivel o envio da mensagem, tente novamente mais tarde.\n");
   }  
-  return sent;
+  return buffer;
 }
 
 void REG(char name[128], char surname[128], char ip[128], char scport[128], int socketfd, struct sockaddr_in serveraddr){
