@@ -203,10 +203,11 @@ int newudpclient(struct sockaddr_in *serveraddr, char *name, int chartype, char 
   return fd;
 }
 
-char *sendMensage(char *buffer, int socketfd, struct sockaddr_in serveraddr){
+void *sendProtocolMessage(char *buffer, int socketfd, struct sockaddr_in serveraddr){
 
   int addrlen;
   int n;
+
 
   int counter;
   struct timeval tv;
@@ -235,6 +236,7 @@ char *sendMensage(char *buffer, int socketfd, struct sockaddr_in serveraddr){
         printf("Error on recvfrom\n");
         exit(1);
       }
+      printf("%d\n", n);
       buffer[n]='\0';
       printf("%s\n",buffer);
       i=3;
@@ -245,23 +247,23 @@ char *sendMensage(char *buffer, int socketfd, struct sockaddr_in serveraddr){
   }
   if(!sent){
     printf("Não foi possivel o envio da mensagem, tente novamente mais tarde.\n");
-  }  
-  return buffer;
+  }
 }
 
 void SREG(char surname[128], char ip[128], char port[128], int socketfd, struct sockaddr_in serveraddr){
   char buffer[128];
 
   sprintf(buffer, "SREG %s;%s;%s", surname, ip, port);
-  printf("Mensagem enviada para o servidor: %s\n", buffer);
-  sendMensage(buffer, socketfd, serveraddr);
+  printf("Mensagem enviada: %s\n", buffer);
+  sendProtocolMessage(buffer, socketfd, serveraddr);
 }
 
 void SUNR(char surname[128], int socketfd, struct sockaddr_in serveraddr){
   char buffer[128];
+
   sprintf(buffer, "SUNR %s", surname);
-  printf("Mensagem enviada para o servidor: %s\n", buffer);
-  sendMensage(buffer, socketfd, serveraddr);
+  printf("Mensagem enviada: %s\n", buffer);
+  sendProtocolMessage(buffer, socketfd, serveraddr);
 }
 
 void REG(char parametros[128], Row *row, int socketfd, struct sockaddr_in serveraddr){
@@ -278,7 +280,7 @@ void REG(char parametros[128], Row *row, int socketfd, struct sockaddr_in server
   if(searchList(*row, name)){
     addrlen = sizeof(serveraddr);
     sprintf(buffer, "NOK Name already registered\n");
-    printf("Mensagem enviada para o servidor: %s\n", buffer);
+    printf("Mensagem enviada: %s\n", buffer);
     if(sendto(socketfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&serveraddr, addrlen)==-1){
       printf("Error sending\n");
       exit(1);
@@ -296,7 +298,7 @@ void REG(char parametros[128], Row *row, int socketfd, struct sockaddr_in server
 
   addrlen = sizeof(serveraddr);
   sprintf(buffer, "OK\n");
-  printf("Mensagem enviada para o servidor: %s\n", buffer);
+  printf("Mensagem enviada: %s\n", buffer);
   if(sendto(socketfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&serveraddr, addrlen)==-1){
     printf("Error sending\n");
     exit(1);
@@ -313,7 +315,7 @@ void UNR(char parametros[128], Row *row, int socketfd, struct sockaddr_in server
   if(!searchList(*row, name)){
     addrlen = sizeof(serveraddr);
     sprintf(buffer, "NOK Name not registered\n");
-    printf("Mensagem enviada para o servidor: %s\n", buffer);
+    printf("Mensagem enviada: %s\n", buffer);
     if(sendto(socketfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&serveraddr, addrlen)==-1){
       printf("Error sending\n");
       exit(1);
@@ -325,7 +327,7 @@ void UNR(char parametros[128], Row *row, int socketfd, struct sockaddr_in server
 
   addrlen = sizeof(serveraddr);
   sprintf(buffer, "OK\n");
-  printf("Mensagem enviada para o servidor: %s\n", buffer);
+  printf("Mensagem enviada: %s\n", buffer);
   if(sendto(socketfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&serveraddr, addrlen)==-1){
     printf("Error sending\n");
     exit(1);
@@ -356,18 +358,15 @@ void RPL(char parametros[128]){
   scport=strtok(NULL, "\0");
 }
   
-int SQRY(char surname[128], int socketfd, struct sockaddr_in serveraddr){
-  int n;
-  int addrlen;
-  char buffer[128];
+void SQRY(char surname[128], int socketfd, struct sockaddr_in serveraddr){
+
+  char buffer[128], *msgReceived;
   
-  addrlen = sizeof(serveraddr);
   sprintf(buffer, "SQRY %s", surname);
-  printf("Mensagem enviada para o servidor: %s\n", buffer);
-  if(sendto(socketfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&serveraddr, addrlen)==-1){
-    printf("Error sending\n");
-    exit(1);
-  }
+  printf("Mensagem enviada: %s\n", buffer);
+  sendProtocolMessage(buffer, socketfd, serveraddr);
+  printf("%s\n",buffer);
+
 }
 
 int main(int argc, char *argv[]){
@@ -552,7 +551,7 @@ int main(int argc, char *argv[]){
           break;
 
           case 'U':
-            UNR(parametros, &row, me_socket, serveraddr);
+            SQRY("Goncalves", surname_socket, surname_server);
           break;
 
           case 'S':
@@ -560,7 +559,7 @@ int main(int argc, char *argv[]){
           break;
 
           case 'Q':
-            QRY(parametros);
+            SQRY("Goncalves", me_socket, serveraddr);
           break;
 
           default:

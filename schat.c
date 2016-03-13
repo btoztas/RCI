@@ -55,7 +55,7 @@ void QRY(char parametros[128], char *ip, char *port, int socketfd, struct sockad
 
   addrlen = sizeof((serveraddr));
   sprintf(buffer, "QRY %s", parametros);
-  printf("Mensagem enviada para o servidor: %s\n", buffer);
+  printf("Mensagem enviada: %s\n", buffer);
   if(sendto(socketfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&(serveraddr), addrlen)==-1){
     printf("Error sending\n");
     exit(1);
@@ -68,7 +68,7 @@ void QRY(char parametros[128], char *ip, char *port, int socketfd, struct sockad
   printf("%s\n",buffer);
 }*/
 
-char *sendMensage(char *buffer, int socketfd, struct sockaddr_in serveraddr){
+char *sendProtocolMessage(char *buffer, int socketfd, struct sockaddr_in serveraddr){
 
   int addrlen;
   int n;
@@ -118,8 +118,8 @@ void REG(char name[128], char surname[128], char ip[128], char scport[128], int 
   char buffer[128];
 
   sprintf(buffer, "REG %s.%s;%s;%s", name, surname, ip, scport);
-  printf("Mensagem enviada para o servidor: %s\n", buffer);
-  sendMensage(buffer, socketfd, serveraddr);
+  printf("Mensagem enviada: %s\n", buffer);
+  sendProtocolMessage(buffer, socketfd, serveraddr);
 
   return; 
 }
@@ -129,8 +129,8 @@ void UNR(char name[128], char surname[128], int socketfd, struct sockaddr_in ser
   char buffer[128];
 
   sprintf(buffer, "UNR %s.%s", name, surname);
-  printf("Mensagem enviada para o servidor: %s\n", buffer);
-  sendMensage(buffer, socketfd, serveraddr);
+  printf("Mensagem enviada: %s\n", buffer);
+  sendProtocolMessage(buffer, socketfd, serveraddr);
 
   return;
 }
@@ -139,7 +139,7 @@ int main(int argc, char *argv[]){
 
 	int i;
 	char *name, *surname, 
-	ip[128], scport[128], snpip[128], snpport[128], ipdooutro[128], portodooutro[128];
+	ip[128], scport[128], snpip[128], snpport[128];
 
 	int sair=1;
 	
