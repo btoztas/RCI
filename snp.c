@@ -116,8 +116,15 @@ void removeList(Row *row, char *name){
   }
   
   if(row->size==2){
-    free(row->last);
-    row->last = NULL;
+    if(strcmp(((row->last)->data).name, name)==0){
+      free(row->last);
+      row->last = NULL;
+	}
+	else{
+	  free(row->first);
+	  row->first=row->last;
+	  row->last = NULL;
+	}
   }
   
   if(row->size>=3){
