@@ -103,16 +103,14 @@ void printlist(Row row){
   }
 }
 
-void searchList(Row row, localization *ipport, char *name){
+int searchList(Row row, char *name){
   List *aux;
   
   for(aux=row.first;aux!=NULL;aux=aux->next){
     if(strcmp((aux->data).name, name)==0){
-      strcpy(ipport->port, (aux->data).port);
-      strcpy(ipport->ip, (aux->data).ip);
-      strcpy(ipport->name, (aux->data).name);
-    }
+      return 1;
   }
+  return 0;
 }
 
 void removeList(Row *row, char *name){
@@ -244,15 +242,28 @@ void SUNR(char surname[128], int socketfd, struct sockaddr_in serveraddr){
   printf("%s\n",buffer);
 }
 
-void REG(char parametros[128], Row *row){
+void REG(char parametros[128], Row *row, int socketfd, struct sockaddr_in serveraddr){
   localization ipport;
   char *name, *surname, *ip, *port;
+  char buffer[128];
+  int addrlen;
 
   name=strtok(parametros, ".");
   surname=strtok(NULL, ";");
   ip=strtok(NULL, ";");
   port=strtok(NULL, "\0");
-  
+
+  if(searchList(*row, name)){
+    addrlen = sizeof(serveraddr);
+    sprintf(buffer, "NOK Name already registered\n");
+    printf("Mensagem enviada para o servidor: %s\n", buffer);
+    if(sendto(socketfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&serveraddr, addrlen)==-1){
+      printf("Error sending\n");
+      exit(1);
+    }
+    return;
+  }
+
   strcpy(ipport.name, name);
   strcpy(ipport.surname, surname);
   strcpy(ipport.ip, ip);
@@ -260,6 +271,14 @@ void REG(char parametros[128], Row *row){
   
 
   add(row, ipport);
+
+  addrlen = sizeof(serveraddr);
+  sprintf(buffer, "OK\n");
+  printf("Mensagem enviada para o servidor: %s\n", buffer);
+  if(sendto(socketfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&serveraddr, addrlen)==-1){
+    printf("Error sending\n");
+    exit(1);
+  }
 }
 
 void UNR(char parametros[128], Row *row){
@@ -468,7 +487,7 @@ int main(int argc, char *argv[]){
           case 'R':
             switch(cabecalho[1]){
               case 'E':
-                REG(parametros, &row);
+                REG(parametros, &row, me_socket, serveraddr);
               break;
 
               case 'P':
