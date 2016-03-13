@@ -40,19 +40,6 @@ void init(Row *row){
   row->size=0;
 }
  
-void readData(localization *x){
-  char al[64];
-  fgets(al, 60, stdin);
-  sscanf(al, "%s\n", al);
-  strcpy(x->name, al);
-  fgets(al, 60, stdin);
-  sscanf(al, "%s\n", al);
-  strcpy(x->ip, al);
-  fgets(al, 60, stdin);
-  sscanf(al, "%s\n", al);
-  strcpy(x->port, al);
-}
- 
 List *newNode(localization x){
   List *new=calloc(1, sizeof(List));
   if(new==NULL){
@@ -110,7 +97,8 @@ int searchList(Row row, localization *result, char *name){
       if(result!=NULL){
         strcpy(result->port, (aux->data).port);
         strcpy(result->ip, (aux->data).ip);
-        strcpy(result->name, (aux->data).name);
+        strcpy(result->name, (aux->data).name);        
+        strcpy(result->surname, (aux->data).surname); 
       }
       return 1;
     }
