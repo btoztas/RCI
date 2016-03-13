@@ -46,13 +46,18 @@ int newudpclient(struct sockaddr_in *serveraddr, char *name, int chartype, char 
 }
 /*
 void QRY(char parametros[128], char *ip, char *port){
+=======
+
+void QRY(char parametros[128], char *ip, char *port, int socketfd, struct sockaddr_in serveraddr){
+>>>>>>> 95b3e55c880c51809803bb6b9d5a6117e94a915b
   
   int n;
   int addrlen;
-  char buffer[128];
+  char *garbage;
+  char buffer[128], cabecalho[128], aux[128];
 
   addrlen = sizeof((serveraddr));
-  sprintf(buffer, "REG %s.%s;%s;%s", name, surname, ip, scport);
+  sprintf(buffer, "QRY %s", parametros);
   printf("Mensagem enviada para o servidor: %s\n", buffer);
   if(sendto(socketfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&(serveraddr), addrlen)==-1){
     printf("Error sending\n");
@@ -64,6 +69,7 @@ void QRY(char parametros[128], char *ip, char *port){
   }
   buffer[n]='\0';
   printf("%s\n",buffer);
+<<<<<<< HEAD
 }*/
 
 void REG(char name[128], char surname[128], char ip[128], char scport[128], int socketfd, struct sockaddr_in serveraddr){
@@ -215,8 +221,13 @@ int main(int argc, char *argv[]){
 	      	UNR(name, surname, name_socket, name_server);
 	      	
 	      }else if(strcmp(cabecalho, "find")==0){
+<<<<<<< HEAD
 	      	/*QRY(parametros, &ipdooutro, &portodooutro);*/
 	      	
+=======
+	      	QRY(parametros, ipdooutro, portodooutro, name_socket, name_server);
+	      	printf("Ip:%s Porto:%s\n", ipdooutro, portodooutro);
+>>>>>>> 95b3e55c880c51809803bb6b9d5a6117e94a915b
 	      }else if(strcmp(cabecalho, "connect")==0){
 	      	
 	      }else if(strcmp(cabecalho, "message")==0){
