@@ -107,8 +107,10 @@ int searchList(Row row, char *name){
   List *aux;
   
   for(aux=row.first;aux!=NULL;aux=aux->next){
-    if(strcmp((aux->data).name, name)==0)
+    if(strcmp((aux->data).name, name)==0){
+      printf("ola\n");
       return 1;
+    }
   }
   return 0;
 }
@@ -119,39 +121,41 @@ void removeList(Row *row, char *name){
   
   if(row->size==1){
     free(row->first);
+    row->first = NULL;
   }
   
   if(row->size==2){
     free(row->last);
+    row->last = NULL;
   }
   
   if(row->size>=3){
     for(aux=row->first;aux!=NULL&&i==0;aux=aux->next){
       if(strcmp((aux->data).name, name)==0){
-      if(aux==row->first){
-        aux1=aux->next;
-        row->first=aux->next;
-        free(aux);
-        i=i++;
-          aux=aux1;
-      }
-      else if(aux==row->last){
-        row->last=aux1;
-        free(aux);
-        i=i++;
-          aux=aux1;
-      }
-      else{
-          aux1->next=aux->next;
+        if(aux==row->first){
+          aux1=aux->next;
+          row->first=aux->next;
           free(aux);
           i=i++;
-          aux=aux1;
-      }
+            aux=aux1;
+        }
+        else if(aux==row->last){
+          row->last=aux1;
+          free(aux);
+          i=i++;
+            aux=aux1;
+        }
+        else{
+            aux1->next=aux->next;
+            free(aux);
+            i=i++;
+            aux=aux1;
+        }
       }
       else
         aux1=aux;
     }
-    }
+  }
   row->size=(row->size)-1;
 }
 
@@ -251,7 +255,7 @@ void REG(char parametros[128], Row *row, int socketfd, struct sockaddr_in server
   name=strtok(parametros, ".");
   surname=strtok(NULL, ";");
   ip=strtok(NULL, ";");
-  port=strtok(NULL, "\0");
+  port=strtok(NULL, "\0"); 
 
   if(searchList(*row, name)){
     addrlen = sizeof(serveraddr);
