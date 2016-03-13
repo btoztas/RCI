@@ -92,22 +92,22 @@ void printlist(Row row){
   
   if(row.size==1){
   aux=row.first;
-    printf("\n%s;%s;%s", (aux->data).name, (aux->data).ip, (aux->data).port);  
+    printf("%s;%s;%s\n", (aux->data).name, (aux->data).ip, (aux->data).port);  
   }
   
   if(row.size>=2){  
     for(aux=row.first;aux!=NULL;aux=aux->next){
-    printf("\n%s;%s;%s", (aux->data).name, (aux->data).ip, (aux->data).port);
+    printf("%s;%s;%s\n", (aux->data).name, (aux->data).ip, (aux->data).port);
     }
-    printf("\n");
   }
+  return;
 }
 
 int searchList(Row row, char *name){
   List *aux;
   
   for(aux=row.first;aux!=NULL;aux=aux->next){
-    if(strcmp((aux->data).name, name)==0){
+    if(strcmp((aux->data).name, name)==0)
       return 1;
   }
   return 0;
@@ -281,17 +281,34 @@ void REG(char parametros[128], Row *row, int socketfd, struct sockaddr_in server
   }
 }
 
-void UNR(char parametros[128], Row *row){
+void UNR(char parametros[128], Row *row, int socketfd, struct sockaddr_in serveraddr){
   char *name, *surname;
+  char buffer[128];
+  int addrlen;
 
   name=strtok(parametros, ".");
   surname=strtok(NULL, "\0");
-  
-  printf("alive\n");
+
+  if(!searchList(*row, name)){
+    addrlen = sizeof(serveraddr);
+    sprintf(buffer, "NOK Name not registered\n");
+    printf("Mensagem enviada para o servidor: %s\n", buffer);
+    if(sendto(socketfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&serveraddr, addrlen)==-1){
+      printf("Error sending\n");
+      exit(1);
+    }
+    return;
+  }
   
   removeList(row, name);
-  
-  printf("alive\n");
+
+  addrlen = sizeof(serveraddr);
+  sprintf(buffer, "OK\n");
+  printf("Mensagem enviada para o servidor: %s\n", buffer);
+  if(sendto(socketfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&serveraddr, addrlen)==-1){
+    printf("Error sending\n");
+    exit(1);
+  }
 }
 
 void SRPL(char parametros[128]){
@@ -427,7 +444,6 @@ int main(int argc, char *argv[]){
   
   /*------------------------------------*/
   
-  
   if(bind(me_socket, (struct sockaddr*)&serveraddr, sizeof(serveraddr)) < 0){
     printf("Error on binding\n");
     exit(1);
@@ -501,7 +517,7 @@ int main(int argc, char *argv[]){
           break;
 
           case 'U':
-            UNR(parametros, &row);
+            UNR(parametros, &row, me_socket, serveraddr);
           break;
 
           case 'S':
