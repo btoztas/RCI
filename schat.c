@@ -38,10 +38,8 @@ int newudpclient(struct sockaddr_in *serveraddr, char *name, int chartype, char 
   	(*serveraddr).sin_addr.s_addr=((struct in_addr*)(h->h_addr_list[0]))->s_addr;
 	}else{
 		inet_pton(AF_INET, name, &((*serveraddr).sin_addr));
-		printf("oi\n");
 	}
   (*serveraddr).sin_port=htons((u_short)atoi(port)); 
-  printf("2oi\n");
   return fd;
 }
 
@@ -56,7 +54,7 @@ int sendProtocolMessage(char *buffer, int socketfd, struct sockaddr_in serveradd
   int i;
   int sent=0;
 
-  tv.tv_sec = 3;
+  tv.tv_sec = 10;
   tv.tv_usec = 0;
   FD_ZERO(&funcfds);
   FD_SET(socketfd, &funcfds);
@@ -124,7 +122,7 @@ void QRY(char parametros[128], int socketfd, struct sockaddr_in serveraddr, char
   sendProtocolMessage(buffer, socketfd, serveraddr);
   
   if(sizeof(buffer)<=5)
-    printf("O cliente que deseja contactar não se encontra registado");
+    printf("O cliente que deseja contactar não se encontra registado\n");
   else{
     strtok(buffer, ";");
     contactip=strtok(NULL, ";");

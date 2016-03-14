@@ -213,7 +213,7 @@ int sendProtocolMessage(char *buffer, int socketfd, struct sockaddr_in serveradd
   int i;
   int sent=0;
 
-  tv.tv_sec = 3;
+  tv.tv_sec = 2;
   tv.tv_usec = 0;
   FD_ZERO(&funcfds);
   FD_SET(socketfd, &funcfds);
@@ -348,6 +348,8 @@ void SRPL(char name[128], char parametros[128], int me_socket, struct sockaddr_i
   buffer = calloc(128, sizeof(char));
   char warning[128];
 
+  int flag=0;
+
   surname=strtok(parametros, ";");
   snpip=strtok(NULL, ";");
   snpport=strtok(NULL, "\0");
@@ -356,8 +358,9 @@ void SRPL(char name[128], char parametros[128], int me_socket, struct sockaddr_i
   printf("Mensagem enviada: %s\n", buffer);
 
   contactsnp_socket = newudpclient(&contactsnp_server, snpip, IP, snpport);
+  flag=sendProtocolMessage(buffer, contactsnp_socket, contactsnp_server)
 
-  if(!sendProtocolMessage(buffer, contactsnp_socket, contactsnp_server)){
+  if(!flag){
     addrlen = sizeof(me_server);
     sprintf(warning, "NOK - Could not reach name server surname server gave...\n");
     printf("Mensagem enviada: %s\n", warning);
@@ -365,14 +368,14 @@ void SRPL(char name[128], char parametros[128], int me_socket, struct sockaddr_i
       printf("Error sending\n");
       exit(1);
     }
+  }else{
+    addrlen = sizeof(me_server);
+    printf("Mensagem enviada: %s\n", buffer);
+    if(sendto(me_socket, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&me_server, addrlen)==-1){
+      printf("Error sending\n");
+      exit(1);
+    }
   }
-  addrlen = sizeof(me_server);
-  printf("Mensagem enviada: %s\n", buffer);
-  if(sendto(me_socket, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&me_server, addrlen)==-1){
-    printf("Error sending\n");
-    exit(1);
-  }
-
 }
 
 void SQRY(char name[128], char surname[128], int surname_socket, struct sockaddr_in surname_server, int me_socket, struct sockaddr_in me_server){
