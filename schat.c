@@ -121,7 +121,7 @@ void QRY(char parametros[128], int socketfd, struct sockaddr_in serveraddr, char
   printf("Mensagem enviada: %s\n", buffer);
   sendProtocolMessage(buffer, socketfd, serveraddr);
   
-  if(sizeof(buffer)<=5)
+  if(strcmp(buffer, "RPL")==0)
     printf("O cliente que deseja contactar não se encontra registado\n");
   else{
     strtok(buffer, ";");
