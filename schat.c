@@ -45,29 +45,6 @@ int newudpclient(struct sockaddr_in *serveraddr, char *name, int chartype, char 
   return fd;
 }
 
-/*
-void QRY(char parametros[128], char *ip, char *port, int socketfd, struct sockaddr_in serveraddr){
-  
-  int n;
-  int addrlen;
-  char *garbage;
-  char buffer[128], cabecalho[128], aux[128];
-
-  addrlen = sizeof((serveraddr));
-  sprintf(buffer, "QRY %s", parametros);
-  printf("Mensagem enviada: %s\n", buffer);
-  if(sendto(socketfd, buffer, strlen(buffer)+1, 0, (struct sockaddr*)&(serveraddr), addrlen)==-1){
-    printf("Error sending\n");
-    exit(1);
-  }
-  if((n=recvfrom(socketfd, buffer, sizeof(buffer), 0, (struct sockaddr*)&(serveraddr), &addrlen))==-1){
-    printf("Error on recvfrom\n");
-    exit(1);
-  }
-  buffer[n]='\0';
-  printf("%s\n",buffer);
-}*/
-
 int sendProtocolMessage(char *buffer, int socketfd, struct sockaddr_in serveraddr){
 
   int addrlen;
@@ -256,6 +233,6 @@ int main(int argc, char *argv[]){
 	    }
     }
   }
-
+  
 	return 0;
 }
