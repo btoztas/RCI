@@ -119,6 +119,7 @@ void removeList(Row *row, char *name){
     if(strcmp(((row->last)->data).name, name)==0){
       free(row->last);
       row->last = NULL;
+      row->first->next=NULL;
 	}
 	else{
 	  free(row->first);
@@ -139,6 +140,7 @@ void removeList(Row *row, char *name){
         }
         else if(aux==row->last){
           row->last=aux1;
+          (row->last)->next=NULL;
           free(aux);
           i++;
           aux=aux1;
