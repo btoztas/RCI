@@ -358,7 +358,8 @@ void SRPL(char name[128], char parametros[128], int me_socket, struct sockaddr_i
   printf("Mensagem enviada: %s\n", buffer);
 
   contactsnp_socket = newudpclient(&contactsnp_server, snpip, IP, snpport);
-  flag=sendProtocolMessage(buffer, contactsnp_socket, contactsnp_server)
+  
+  flag=sendProtocolMessage(buffer, contactsnp_socket, contactsnp_server);
 
   if(!flag){
     addrlen = sizeof(me_server);
