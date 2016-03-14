@@ -204,7 +204,6 @@ int newudpclient(struct sockaddr_in *serveraddr, char *name, int chartype, char 
   return fd;
 }
 int sendProtocolMessage(char *buffer, int socketfd, struct sockaddr_in serveraddr){
-
   int addrlen;
   int n;
 
@@ -511,45 +510,7 @@ int main(int argc, char *argv[]){
 
   me_socket=newudpserver(&me_server, snpport);
   
-   /*----------mini-teste-------------*/
-  
-  
-  /*readData(&ipport);
-  
-  add(&row, ipport);
-  
-  readData(&ipport);
-  
-  add(&row, ipport);
-  
-  readData(&ipport);
-  
-  add(&row, ipport);
-  
-  readData(&ipport);
-  
-  add(&row, ipport);
-  
-  printlist(row);
-  
-  fgets(al, 60, stdin);
-  
-  sscanf(al, "%s\n", al);
-  
-  searchList(row, &ipport, al);
-  
-  printf("\n%s//%s//%s\n", ipport.name, ipport.ip, ipport.port);
-  
-  fgets(al, 60, stdin);
-  
-  sscanf(al, "%s\n", al);
-  
-  removeList(&row, al);
-  
-  printlist(row);*/
-  
-  /*------------------------------------*/
-  
+
   if(bind(me_socket, (struct sockaddr*)&me_server, sizeof(me_server)) < 0){
     printf("Error on binding\n");
     exit(1);

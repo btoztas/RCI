@@ -140,7 +140,6 @@ void UNR(char name[128], char surname[128], int socketfd, struct sockaddr_in ser
 
 void QRY(char parametros[128], int socketfd, struct sockaddr_in serveraddr, char *contactip, char *contactport){
   char *buffer;
-  char *garbage;
   buffer = calloc(128, sizeof(char));
 
   sprintf(buffer, "QRY %s", parametros);
@@ -148,9 +147,9 @@ void QRY(char parametros[128], int socketfd, struct sockaddr_in serveraddr, char
   sendProtocolMessage(buffer, socketfd, serveraddr);
   
   if(sizeof(buffer)<=5)
-	printf("o cliente que deseja contactar não se encontra registado");
+    printf("O cliente que deseja contactar não se encontra registado");
   else{
-    garbage=strtok(buffer, ";");
+    strtok(buffer, ";");
     contactip=strtok(NULL, ";");
     contactport=strtok(NULL, "\0"); 
   }
