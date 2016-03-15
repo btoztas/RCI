@@ -10,6 +10,25 @@
 
 #define PORT 58000
 
+
+int newtcpserver(struct sockaddr_in *serveraddr, char port[128]){
+  int fd;
+
+  fd=socket(AF_INET, SOCK_STREAM, 0);
+  if(fd==-1){
+    printf("Error opening socket\n");
+    exit(1);
+  }
+
+  memset((void*)&(*serveraddr),(int)'\0',sizeof((*serveraddr)));
+  (*serveraddr).sin_family=AF_INET;
+  (*serveraddr).sin_addr.s_addr=htonl(INADDR_ANY);
+  (*serveraddr).sin_port=htons((u_short)atoi(port));
+
+  return fd;
+}
+
+
 int main(){
 
 	int socketfd, newsocketfd;
@@ -21,24 +40,7 @@ int main(){
 	struct in_addr *a;
 	*/
 	
-	socketfd=socket(AF_INET, SOCK_STREAM, 0);
-	if(socketfd==-1){
-		printf("Error opening socket");
-		exit(1);
-	}
-	/*
-	if((h=gethostbyname("lima"))==NULL){
-		printf("Error on getting host");
-		exit(1);
-	}
-	
-	printf("official host name: %s\n", h->h_name);
-	a=(struct in_addr*)h->h_addr_list[0];*/
-
-	memset((void*)&serveraddr,(int)'\0',sizeof(serveraddr));
-	serveraddr.sin_family=AF_INET;
-	serveraddr.sin_addr.s_addr=htonl(INADDR_ANY);
-	serveraddr.sin_port=htons((u_short)PORT);
+	socketfd=newtcpserver(&serveraddr);
 	
 	if(bind(socketfd, (struct sockaddr*)&serveraddr, sizeof(serveraddr)) < 0){
 		printf("Error on binding");
@@ -61,7 +63,7 @@ int main(){
 		exit(1);
 	}
 	printf("%s\n", buffer);
-	
+	sprintf(buffer, "Enviaste-me: %s\n", buffer);
 	if(write(newsocketfd, buffer, sizeof(buffer))){
 		printf("Error on binding");
 		exit(1);
