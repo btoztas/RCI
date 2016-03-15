@@ -15,39 +15,6 @@
 #define NAME 0
 #define IP 1
 
-int newtcpserver(struct sockaddr_in *serveraddr, char port[128]){
-  int fd;
-
-  fd=socket(AF_INET, SOCK_STREAM, 0);
-  if(fd==-1){
-    printf("Error opening socket\n");
-    exit(1);
-  }
-
-  memset((void*)&(*serveraddr),(int)'\0',sizeof((*serveraddr)));
-  (*serveraddr).sin_family=AF_INET;
-  (*serveraddr).sin_addr.s_addr=htonl(INADDR_ANY);
-  (*serveraddr).sin_port=htons((u_short)atoi(port));
-
-  return fd;
-}
-
-int newtcpclient(struct sockaddr_in *serveraddr, char *ip, char *port){
-
-  int fd;
-
-  fd=socket(AF_INET, SOCK_STREAM, 0);
-  if(fd==-1){
-    printf("Error opening socket\n");
-    exit(1);
-  }
-
-  memset((void*)&(*serveraddr),(int)'\0',sizeof((*serveraddr)));
-  (*serveraddr).sin_family=AF_INET;
-  inet_pton(AF_INET, ip, &((*serveraddr).sin_addr));
-  (*serveraddr).sin_port=htons((u_short)atoi(port)); 
-  return fd;
-}
 
 int newudpclient(struct sockaddr_in *serveraddr, char *name, int chartype, char *port){
 
@@ -64,14 +31,14 @@ int newudpclient(struct sockaddr_in *serveraddr, char *name, int chartype, char 
   (*serveraddr).sin_family=AF_INET;
 
   if(chartype == NAME){
-	  if((h=gethostbyname(name))==NULL){
-	    printf("Error on getting host\n");
-	    exit(1);
-	  }
-  	(*serveraddr).sin_addr.s_addr=((struct in_addr*)(h->h_addr_list[0]))->s_addr;
-	}else{
-		inet_pton(AF_INET, name, &((*serveraddr).sin_addr));
-	}
+    if((h=gethostbyname(name))==NULL){
+      printf("Error on getting host\n");
+      exit(1);
+    }
+    (*serveraddr).sin_addr.s_addr=((struct in_addr*)(h->h_addr_list[0]))->s_addr;
+  }else{
+    inet_pton(AF_INET, name, &((*serveraddr).sin_addr));
+  }
   (*serveraddr).sin_port=htons((u_short)atoi(port)); 
   return fd;
 }
@@ -163,22 +130,14 @@ void QRY(char parametros[128], int socketfd, struct sockaddr_in serveraddr, char
   }
 }
 
-/**/
-void tcpConnectProtocol(int socketfd, struct sockaddr_in serveraddr){
-  if(connect(socketfd,(struct sockaddr*)&serveraddr,sizeof(serveraddr))==-1){
-    printf("Error connecting do contact\n");
-    exit(1);
-  }
-}
-
 int main(int argc, char *argv[]){
 
-	int i;
-	char *name, *surname, 
-	ip[128], scport[128], snpip[128], snpport[128], contactip[128], contactport[128];
+  int i;
+  char *name, *surname, 
+  ip[128], scport[128], snpip[128], snpport[128], contactip[128], contactport[128];
 
-	int sair=1;
-	
+  int sair=1;
+  
   fd_set rfds;
   int maxfd, counter;
   char buffer[128];
@@ -186,11 +145,8 @@ int main(int argc, char *argv[]){
 
   char cabecalho[128], parametros[128];
 
-  struct sockaddr_in name_server, me_server, contact_server;
-  int name_socket, me_socket, contact_socket;
-  int addrlen;
-
-
+  struct sockaddr_in name_server;
+  int name_socket;
   if(argc!=11){
     printf("Algo errado com os parametros colocados, por favor reveja-os.\n");
     exit(4);
@@ -229,18 +185,13 @@ int main(int argc, char *argv[]){
   }
   printf("name: %s\nsurname: %s\nsnpip: %s\nsnpport: %s\nsaip: %s\nscport: %s\n", name, surname, snpip, snpport, ip, scport);
 
-
-  if(bind(me_socket,(struct sockaddr*)&me_server,sizeof(me_server))==-1)
-    exit(1);
-  if(listen(me_socket,1)==-1)
-    exit(1);
-
-
-  FD_ZERO(&rfds);
-  
+  name_socket = newudpclient(&name_server, snpip, IP, snpport);
   while(sair){
 
+    FD_ZERO(&rfds);
     FD_SET(STDIN, &rfds);
+    FD_SET(name_socket, &rfds);
+    maxfd=name_socket;
 
     counter = select(maxfd+1, &rfds, NULL, NULL, NULL);
 
@@ -248,73 +199,38 @@ int main(int argc, char *argv[]){
       printf("Error on select\n");
       exit(4);
     }else if(counter>0){
-	    if(FD_ISSET(STDIN, &rfds)){
-	      fgets(buffer, sizeof(buffer), stdin);
-	      len = strlen(buffer) - 1;
-	      if (buffer[len] == '\n')
-	        buffer[len] = '\0';
-	      sscanf(buffer, "%s %s", cabecalho, parametros);
-	      printf("Comando: %s\nCabecalho: %s\nParametros: %s\n", buffer, cabecalho, parametros);
-	      if(strcmp(cabecalho, "join")==0){
-          
-          name_socket = newudpclient(&name_server, snpip, IP, snpport);
-          me_socket = newtcpserver(&me_server, scport);
-          FD_SET(name_socket, &rfds);
-          FD_SET(me_socket, &rfds);
-          maxfd=me_socket;
-	      	REG(name, surname, ip, scport, name_socket, name_server);
-          
-	      }else if(strcmp(cabecalho, "leave")==0){
-	      	
+      if(FD_ISSET(STDIN, &rfds)){
+        fgets(buffer, sizeof(buffer), stdin);
+        len = strlen(buffer) - 1;
+        if (buffer[len] == '\n')
+          buffer[len] = '\0';
+        sscanf(buffer, "%s %s", cabecalho, parametros);
+        printf("Comando: %s\nCabecalho: %s\nParametros: %s\n", buffer, cabecalho, parametros);
+        if(strcmp(cabecalho, "join")==0){
+          REG(name, surname, ip, scport, name_socket, name_server);
+
+        }else if(strcmp(cabecalho, "leave")==0){
           UNR(name, surname, name_socket, name_server);
-          FD_CLR(name_socket, &rfds);
-          FD_CLR(me_socket, &rfds);
-          maxfd=STDIN;
-	      	
-	      }else if(strcmp(cabecalho, "find")==0){
+          
+        }else if(strcmp(cabecalho, "find")==0){
           QRY(parametros, name_socket, name_server, contactip, contactport);
 
-	      }else if(strcmp(cabecalho, "connect")==0){
-          QRY(parametros, name_socket, name_server, contactip, contactport);
-          contact_socket = newtcpclient(&contact_server, contactip, contactport);
-          tcpConnectProtocol(contact_socket, contact_server);
-          FD_SET(contact_socket, &rfds);
-          maxfd=contact_socket;
-
-	      }else if(strcmp(cabecalho, "disconnect")==0){
-          FD_CLR(contact_socket, &rfds);
-          maxfd=me_socket;
+        }else if(strcmp(cabecalho, "connect")==0){
           
         }else if(strcmp(cabecalho, "message")==0){
-          send(contact_socket, parametros, strlen(parametros), 0); 
-	      	
-	      }else if(strcmp(cabecalho, "exit")==0){
-	      	sair=0;
-	      }else if(strcmp(cabecalho, "clear")==0){
+          
+        }else if(strcmp(cabecalho, "disconnect")==0){
+          
+        }else if(strcmp(cabecalho, "exit")==0){
+          sair=0;
+        }else if(strcmp(cabecalho, "clear")==0){
           printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-	      }else{
-					printf("Cabecalho (%s) do comando introduzido nao reconhecido\n", cabecalho);
-	      }
-	    }
-      if(FD_ISSET(me_socket, &rfds) && maxfd>0){
-
-        addrlen = sizeof((me_server));
-        contact_socket=accept(me_socket, (struct sockaddr *)&me_server, &addrlen);
-        maxfd=contact_socket;
-        send(contact_socket, "Connected\n", strlen("Connected\n"), 0); 
-      }
-
-      if(FD_ISSET(contact_socket, &rfds) && maxfd==2){
-       
-        if ((len = recv(contact_socket, buffer, 128-1, 0)) == -1){
-          perror("Error on recv\n");
-          exit(1);
+        }else{
+          printf("Cabecalho (%s) do comando introduzido nao reconhecido\n", cabecalho);
         }
-        buffer[len] = '\0';
-        printf("%s: %s\n",contactip, buffer);
       }
     }
   }
-  
-	return 0;
+  /**/
+  return 0;
 }
