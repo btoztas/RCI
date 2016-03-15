@@ -228,17 +228,17 @@ int main(int argc, char *argv[]){
   }
   printf("name: %s\nsurname: %s\nsnpip: %s\nsnpport: %s\nsaip: %s\nscport: %s\n", name, surname, snpip, snpport, ip, scport);
 
-  name_socket = newudpclient(&name_server, snpip, IP, snpport);
-  me_socket = newtcpserver(&me_server, scport);
 
   if(bind(me_socket,(struct sockaddr*)&me_server,sizeof(me_server))==-1)
     exit(1);
   if(listen(me_socket,1)==-1)
     exit(1);
 
+
+  FD_ZERO(&rfds);
+  
   while(sair){
 
-    FD_ZERO(&rfds);
     FD_SET(STDIN, &rfds);
 
     counter = select(maxfd+1, &rfds, NULL, NULL, NULL);
@@ -255,12 +255,18 @@ int main(int argc, char *argv[]){
 	      sscanf(buffer, "%s %s", cabecalho, parametros);
 	      printf("Comando: %s\nCabecalho: %s\nParametros: %s\n", buffer, cabecalho, parametros);
 	      if(strcmp(cabecalho, "join")==0){
-	      	REG(name, surname, ip, scport, name_socket, name_server);
+          
+          name_socket = newudpclient(&name_server, snpip, IP, snpport);
+          me_socket = newtcpserver(&me_server, scport);
+          FD_SET(name_socket, &rfds);
           FD_SET(me_socket, &rfds);
           maxfd=me_socket;
-
+	      	REG(name, surname, ip, scport, name_socket, name_server);
+          
 	      }else if(strcmp(cabecalho, "leave")==0){
-	      	UNR(name, surname, name_socket, name_server);
+	      	
+          UNR(name, surname, name_socket, name_server);
+          FD_CLR(name_socket, &rfds);
           FD_CLR(me_socket, &rfds);
           maxfd=STDIN;
 	      	
@@ -289,7 +295,7 @@ int main(int argc, char *argv[]){
 					printf("Cabecalho (%s) do comando introduzido nao reconhecido\n", cabecalho);
 	      }
 	    }
-      if(FD_ISSET(me_socket, &rfds)){
+      if(FD_ISSET(me_socket, &rfds) && maxfd>0){
 
         addrlen = sizeof((me_server));
         contact_socket=accept(me_socket, (struct sockaddr *)&me_server, &addrlen);
@@ -297,7 +303,7 @@ int main(int argc, char *argv[]){
         send(contact_socket, "Connected\n", strlen("Connected\n"), 0); 
       }
 
-      if(FD_ISSET(contact_socket, &rfds)){
+      if(FD_ISSET(contact_socket, &rfds) && maxfd==2){
        
         if ((len = recv(contact_socket, buffer, 128-1, 0)) == -1){
           perror("Error on recv\n");
@@ -305,7 +311,6 @@ int main(int argc, char *argv[]){
         }
         buffer[len] = '\0';
         printf("%s: %s\n",contactip, buffer);
-
       }
     }
   }
