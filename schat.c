@@ -163,6 +163,7 @@ void QRY(char parametros[128], int socketfd, struct sockaddr_in serveraddr, char
   }
 }
 
+/**/
 void tcpConnectProtocol(int socketfd, struct sockaddr_in serveraddr){
   if(connect(socketfd,(struct sockaddr*)&serveraddr,sizeof(serveraddr))==-1){
     printf("Error connecting do contact\n");
