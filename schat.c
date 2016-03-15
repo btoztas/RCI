@@ -235,7 +235,6 @@ int main(int argc, char *argv[]){
   if(listen(me_socket,1)==-1)
     exit(1);
 
-
   FD_ZERO(&rfds);
   
   while(sair){
@@ -306,7 +305,7 @@ int main(int argc, char *argv[]){
 
       if(FD_ISSET(contact_socket, &rfds) && maxfd==2){
        
-        if ((len = recv(contact_socket, buffer, 128-1, 0)) == -1){
+        if ((len = recv(contact_socket, buffer, sizeof(buffer), 0)) == -1){
           perror("Error on recv\n");
           exit(1);
         }
