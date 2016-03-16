@@ -5,7 +5,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <netdb.h> 
+#include <netdb.h>
+#include <arpa/inet.h>
 
 #define BUFSIZE 128
 
@@ -20,7 +21,6 @@ void error(char *msg) {
 int main(int argc, char **argv) {
     int sockfd, n;
     struct sockaddr_in serveraddr;
-    struct hostent *server;
     char *hostip, *portno;
     char buf[BUFSIZE];
 
@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
     /* build the server's Internet address */
     memset((void*)&(serveraddr),(int)'\0',sizeof((serveraddr)));
     serveraddr.sin_family = AF_INET;
-    inet_pton(AF_INET, "192.168.1.6", &((serveraddr).sin_addr));
+    inet_pton(AF_INET, hostip, &((serveraddr).sin_addr));
     (serveraddr).sin_port=htons((u_short)atoi(portno)); 
 
     /* connect: create a connection with the server */

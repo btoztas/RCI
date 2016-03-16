@@ -20,8 +20,6 @@ int main(){
 	char buffer[128], msgRecieved[128];
 	int n;
 	
-	
-	
 	memset((void*)&(buffer),(int)'\0',sizeof((buffer)));
 	
 	socketfd=socket(AF_INET, SOCK_STREAM, 0);
@@ -51,7 +49,7 @@ int main(){
 	  
 	  clientlen = sizeof(serveraddr);
 	  
-	  if((newsocketfd=accept(socketfd,(struct sockaddr *)&serveraddr,&clientlen))==-1){
+	  if((newsocketfd=accept(socketfd,(struct sockaddr *)&serveraddr,  &clientlen))==-1){
 		  printf("Error on accepting");
 		  exit(1);
 	  }
@@ -60,11 +58,13 @@ int main(){
 	  
 	  memset((void*)&(msgRecieved),(int)'\0',sizeof((msgRecieved)));
 	  
-	  if(n=read(newsocketfd, msgRecieved, sizeof(msgRecieved))==-1){
+	  n=read(newsocketfd, msgRecieved, sizeof(msgRecieved));
+
+	  if(n==-1){
 		  printf("Error on reading");
 		  exit(1);
 	  }
-	  
+	  msgRecieved[n]='\0';
 	  printf("nread= %d\n", n);
 	  
 	  printf("%s\n", msgRecieved);
