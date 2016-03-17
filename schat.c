@@ -229,11 +229,18 @@ int main(int argc, char *argv[]){
   }
   printf("name: %s\nsurname: %s\nsnpip: %s\nsnpport: %s\nsaip: %s\nscport: %s\n", name, surname, snpip, snpport, ip, scport);
 
+  name_socket= newudpclient(&name_server, snpip, IP, snpport);
 
-  if(bind(me_socket,(struct sockaddr*)&me_server,sizeof(me_server))==-1)
-    exit(1);
-  if(listen(me_socket,1)==-1)
-    exit(1);
+  me_socket= newtcpserver(&me_server, scport);
+
+  if(bind(me_socket, (struct sockaddr*)&me_server, sizeof(me_server)) < 0){
+	printf("Error on binding");
+	exit(1);
+  }
+  if(listen(me_socket,2)==-1){
+    printf("Error on listening");
+	exit(1);
+  }
 
   FD_ZERO(&rfds);
 
@@ -256,11 +263,11 @@ int main(int argc, char *argv[]){
         printf("Comando: %s\nCabecalho: %s\nParametros: %s\n", buffer, cabecalho, parametros);
         if(strcmp(cabecalho, "join")==0){
 
-          name_socket = newudpclient(&name_server, snpip, IP, snpport);
-          me_socket = newtcpserver(&me_server, scport);
-          FD_SET(name_socket, &rfds);
+          /*name_socket = newudpclient(&name_server, snpip, IP, snpport);*/
+          /*me_socket = newtcpserver(&me_server, scport);*/
+          /*FD_SET(name_socket, &rfds);
           FD_SET(me_socket, &rfds);
-          maxfd=me_socket;
+          maxfd=me_socket;*/
           REG(name, surname, ip, scport, name_socket, name_server);
 
         }else if(strcmp(cabecalho, "leave")==0){

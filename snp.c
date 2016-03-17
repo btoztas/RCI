@@ -203,6 +203,7 @@ int newudpclient(struct sockaddr_in *serveraddr, char *name, int chartype, char 
   (*serveraddr).sin_port=htons((u_short)atoi(port)); /*PORTA?*/
   return fd;
 }
+
 int sendProtocolMessage(char *buffer, int socketfd, struct sockaddr_in serveraddr){
   int addrlen;
   int n;
@@ -251,6 +252,7 @@ int sendProtocolMessage(char *buffer, int socketfd, struct sockaddr_in serveradd
   strcpy(buffer, msgReceived);
   return sent;
 }
+
 void SREG(char surname[128], char ip[128], char port[128], int socketfd, struct sockaddr_in serveraddr){
   char *buffer;
   buffer = calloc(128, sizeof(char));
