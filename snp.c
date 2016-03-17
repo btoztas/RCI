@@ -22,24 +22,24 @@ typedef struct _localization {
   char ip[64];
   char port[64];
 } localization;
- 
+
 typedef struct _List {
   localization data;
   struct _List *next;
 } List;
- 
+
 typedef struct _Row {
   List *first;
   List *last;
   int size;
 } Row;
- 
+
 void init(Row *row){
   row->first=NULL;
   row->last=NULL;
   row->size=0;
 }
- 
+
 List *newNode(localization x){
   List *new=calloc(1, sizeof(List));
   if(new==NULL){
@@ -50,17 +50,17 @@ List *newNode(localization x){
   new->next = NULL;
   return new;
 }
- 
+
 void add(Row *row, localization x){
   List *new;
-  
+
   new=newNode(x);
   if(row->size==0){
-    row->first=new;  
+    row->first=new;
   }
   if(row->size==1){
     row->last=new;
-    row->first->next=new;  
+    row->first->next=new;
   }
   if(row->size>=2){
     row->last->next=new;
@@ -68,20 +68,20 @@ void add(Row *row, localization x){
   }
   row->size=(row->size)+1;
 }
- 
+
 void printlist(Row row){
   List *aux;
-  
+
   if(row.size==0){
-    printf("lista vazia\n");  
+    printf("lista vazia\n");
   }
-  
+
   if(row.size==1){
   aux=row.first;
-    printf("%s;%s;%s\n", (aux->data).name, (aux->data).ip, (aux->data).port);  
+    printf("%s;%s;%s\n", (aux->data).name, (aux->data).ip, (aux->data).port);
   }
-  
-  if(row.size>=2){  
+
+  if(row.size>=2){
     for(aux=row.first;aux!=NULL;aux=aux->next){
     printf("%s;%s;%s\n", (aux->data).name, (aux->data).ip, (aux->data).port);
     }
@@ -91,14 +91,14 @@ void printlist(Row row){
 
 int searchList(Row row, localization *result, char *name){
   List *aux;
-  
+
   for(aux=row.first;aux!=NULL;aux=aux->next){
     if(strcmp((aux->data).name, name)==0){
       if(result!=NULL){
         strcpy(result->port, (aux->data).port);
         strcpy(result->ip, (aux->data).ip);
-        strcpy(result->name, (aux->data).name);        
-        strcpy(result->surname, (aux->data).surname); 
+        strcpy(result->name, (aux->data).name);
+        strcpy(result->surname, (aux->data).surname);
       }
       return 1;
     }
@@ -109,12 +109,12 @@ int searchList(Row row, localization *result, char *name){
 void removeList(Row *row, char *name){
   int i=0;
   List *aux, *aux1;
-  
+
   if(row->size==1){
     free(row->first);
     row->first = NULL;
   }
-  
+
   if(row->size==2){
     if(strcmp(((row->last)->data).name, name)==0){
       free(row->last);
@@ -127,7 +127,7 @@ void removeList(Row *row, char *name){
 	  row->last = NULL;
 	}
   }
-  
+
   if(row->size>=3){
     for(aux=row->first;aux!=NULL&&i==0;aux=aux->next){
       if(strcmp((aux->data).name, name)==0){
@@ -198,7 +198,7 @@ int newudpclient(struct sockaddr_in *serveraddr, char *name, int chartype, char 
     }
     (*serveraddr).sin_addr.s_addr=((struct in_addr*)(h->h_addr_list[0]))->s_addr;
   }else{
-    inet_pton(AF_INET, name, &((*serveraddr).sin_addr));  
+    inet_pton(AF_INET, name, &((*serveraddr).sin_addr));
   }
   (*serveraddr).sin_port=htons((u_short)atoi(port)); /*PORTA?*/
   return fd;
@@ -278,7 +278,7 @@ void REG(char parametros[128], Row *row, int socketfd, struct sockaddr_in server
   name=strtok(parametros, ".");
   surname=strtok(NULL, ";");
   ip=strtok(NULL, ";");
-  port=strtok(NULL, "\0"); 
+  port=strtok(NULL, "\0");
 
   if(searchList(*row, NULL ,name)){
     addrlen = sizeof(serveraddr);
@@ -289,15 +289,15 @@ void REG(char parametros[128], Row *row, int socketfd, struct sockaddr_in server
       exit(1);
     }
   }else{
-  
+
     strcpy(ipport.name, name);
     strcpy(ipport.surname, surname);
     strcpy(ipport.ip, ip);
     strcpy(ipport.port, port);
-    
-  
+
+
     add(row, ipport);
-  
+
     addrlen = sizeof(serveraddr);
     sprintf(buffer, "OK\n");
     printf("Mensagem enviada: %s\n", buffer);
@@ -325,9 +325,9 @@ void UNR(char parametros[128], Row *row, int socketfd, struct sockaddr_in server
     }
     return;
   }else{
-    
+
     removeList(row, name);
-  
+
     addrlen = sizeof(serveraddr);
     sprintf(buffer, "OK\n");
     printf("Mensagem enviada: %s\n", buffer);
@@ -358,7 +358,7 @@ void SRPL(char name[128], char parametros[128], int me_socket, struct sockaddr_i
   printf("Mensagem enviada: %s\n", buffer);
 
   contactsnp_socket = newudpclient(&contactsnp_server, snpip, IP, snpport);
-  
+
   flag=sendProtocolMessage(buffer, contactsnp_socket, contactsnp_server);
 
   if(!flag){
@@ -384,7 +384,7 @@ void SQRY(char name[128], char surname[128], int surname_socket, struct sockaddr
   buffer = calloc(128, sizeof(char));
 
   char cabecalho[128], parametros[128];
-  
+
   int addrlen;
   char warning[128];
 
@@ -446,7 +446,7 @@ void QRY(char me_surname[128], char parametros[128], int surname_socket, struct 
 }
 
 int main(int argc, char *argv[]){
-  
+
   int i;
   char surname[128], snpip[128], snpport[128], saip[128], saport[128];
   char cabecalho[128], parametros[128];
@@ -469,29 +469,29 @@ int main(int argc, char *argv[]){
     exit(4);
   }else{
     for(i=1; i<argc; i=i+2){
-      
+
       switch(argv[i][1]){
-       
+
         case 'n':
           strcpy(surname, argv[i+1]);
         break;
-        
+
         case 's':
           strcpy(snpip, argv[i+1]);
         break;
-        
+
         case 'q':
           strcpy(snpport, argv[i+1]);
         break;
-        
+
         case 'i':
           strcpy(saip, argv[i+1]);
         break;
-        
+
         case 'p':
           strcpy(saport, argv[i+1]);
         break;
-        
+
         default:
           printf("Sem parametros. Saindo.\n");
           exit(-1);
@@ -499,7 +499,7 @@ int main(int argc, char *argv[]){
       }
     }
   }
-  
+
   printf("surname: %s\nsnpip: %s\nsnpport: %s\nsaip: %s\nsaport: %s\n", surname, snpip, snpport, saip, saport);
   int type = IP;
   if(argc!=11){
@@ -513,7 +513,7 @@ int main(int argc, char *argv[]){
   SREG(surname,snpip,snpport,surname_socket,surname_server);
 
   me_socket=newudpserver(&me_server, snpport);
-  
+
 
   if(bind(me_socket, (struct sockaddr*)&me_server, sizeof(me_server)) < 0){
     printf("Error on binding\n");
@@ -540,7 +540,7 @@ int main(int argc, char *argv[]){
         if (buffer[len] == '\n')
           buffer[len] = '\0';
         printf("Comando: %s\n",buffer);
-        
+
         if(strcmp(buffer, "exit")==0){
           sair=0;
           SUNR(surname, surname_socket, surname_server);
@@ -590,5 +590,5 @@ int main(int argc, char *argv[]){
         }
       }
     }
-  } 
+  }
 }

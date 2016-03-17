@@ -45,7 +45,7 @@ int newtcpclient(struct sockaddr_in *serveraddr, char *ip, char *port){
   memset((void*)&(*serveraddr),(int)'\0',sizeof((*serveraddr)));
   (*serveraddr).sin_family=AF_INET;
   inet_pton(AF_INET, ip, &((*serveraddr).sin_addr));
-  (*serveraddr).sin_port=htons((u_short)atoi(port)); 
+  (*serveraddr).sin_port=htons((u_short)atoi(port));
   return fd;
 }
 
@@ -72,7 +72,7 @@ int newudpclient(struct sockaddr_in *serveraddr, char *name, int chartype, char 
   }else{
     inet_pton(AF_INET, name, &((*serveraddr).sin_addr));
   }
-  (*serveraddr).sin_port=htons((u_short)atoi(port)); 
+  (*serveraddr).sin_port=htons((u_short)atoi(port));
   return fd;
 }
 
@@ -136,14 +136,14 @@ void REG(char name[128], char surname[128], char ip[128], char scport[128], int 
 }
 
 void UNR(char name[128], char surname[128], int socketfd, struct sockaddr_in serveraddr){
-  
+
   char *buffer;
 
   buffer = calloc(128, sizeof(char));
 
   sprintf(buffer, "UNR %s.%s", name, surname);
   printf("Mensagem enviada: %s\n", buffer);
-  sendProtocolMessage(buffer, socketfd, serveraddr);  
+  sendProtocolMessage(buffer, socketfd, serveraddr);
 }
 
 void QRY(char parametros[128], int socketfd, struct sockaddr_in serveraddr, char *contactip, char *contactport){
@@ -153,13 +153,13 @@ void QRY(char parametros[128], int socketfd, struct sockaddr_in serveraddr, char
   sprintf(buffer, "QRY %s", parametros);
   printf("Mensagem enviada: %s\n", buffer);
   sendProtocolMessage(buffer, socketfd, serveraddr);
-  
+
   if(strcmp(buffer, "RPL")==0)
     printf("O cliente que deseja contactar não se encontra registado\n");
   else{
     strtok(buffer, ";");
     contactip=strtok(NULL, ";");
-    contactport=strtok(NULL, "\0"); 
+    contactport=strtok(NULL, "\0");
   }
 }
 
@@ -174,11 +174,11 @@ void tcpConnectProtocol(int socketfd, struct sockaddr_in serveraddr){
 int main(int argc, char *argv[]){
 
   int i;
-  char *name, *surname, 
+  char *name, *surname,
   ip[128], scport[128], snpip[128], snpport[128], contactip[128], contactport[128];
 
   int sair=1;
-  
+
   fd_set rfds;
   int maxfd, counter;
   char buffer[128];
@@ -196,30 +196,30 @@ int main(int argc, char *argv[]){
     exit(4);
   }else{
     for(i=1; i<argc; i=i+2){
-  
+
       switch(argv[i][1]){
-        
+
         case 's':
           strcpy(snpip, argv[i+1]);
         break;
-  
+
         case 'n':
           name=strtok(argv[i+1], ".");
           surname=strtok(NULL, "\0");
         break;
-        
+
         case 'q':
           strcpy(snpport, argv[i+1]);
         break;
-        
+
         case 'i':
           strcpy(ip, argv[i+1]);
         break;
-        
+
         case 'p':
           strcpy(scport, argv[i+1]);
         break;
-        
+
         default:
           printf("Sem parametros. Saindo.\n");
           exit(-1);
@@ -236,7 +236,7 @@ int main(int argc, char *argv[]){
     exit(1);
 
   FD_ZERO(&rfds);
-  
+
   while(sair){
 
     FD_SET(STDIN, &rfds);
@@ -255,21 +255,21 @@ int main(int argc, char *argv[]){
         sscanf(buffer, "%s %s", cabecalho, parametros);
         printf("Comando: %s\nCabecalho: %s\nParametros: %s\n", buffer, cabecalho, parametros);
         if(strcmp(cabecalho, "join")==0){
-          
+
           name_socket = newudpclient(&name_server, snpip, IP, snpport);
           me_socket = newtcpserver(&me_server, scport);
           FD_SET(name_socket, &rfds);
           FD_SET(me_socket, &rfds);
           maxfd=me_socket;
           REG(name, surname, ip, scport, name_socket, name_server);
-          
+
         }else if(strcmp(cabecalho, "leave")==0){
-          
+
           UNR(name, surname, name_socket, name_server);
           FD_CLR(name_socket, &rfds);
           FD_CLR(me_socket, &rfds);
           maxfd=STDIN;
-          
+
         }else if(strcmp(cabecalho, "find")==0){
           QRY(parametros, name_socket, name_server, contactip, contactport);
 
@@ -283,10 +283,10 @@ int main(int argc, char *argv[]){
         }else if(strcmp(cabecalho, "disconnect")==0){
           FD_CLR(contact_socket, &rfds);
           maxfd=me_socket;
-          
+
         }else if(strcmp(cabecalho, "message")==0){
-          send(contact_socket, parametros, strlen(parametros), 0); 
-          
+          send(contact_socket, parametros, strlen(parametros), 0);
+
         }else if(strcmp(cabecalho, "exit")==0){
           sair=0;
         }else if(strcmp(cabecalho, "clear")==0){
@@ -300,11 +300,11 @@ int main(int argc, char *argv[]){
         addrlen = sizeof((me_server));
         contact_socket=accept(me_socket, (struct sockaddr *)&me_server, &addrlen);
         maxfd=contact_socket;
-        send(contact_socket, "Connected\n", strlen("Connected\n"), 0); 
+        send(contact_socket, "Connected\n", strlen("Connected\n"), 0);
       }
 
       if(FD_ISSET(contact_socket, &rfds) && maxfd==2){
-       
+
         if ((len = recv(contact_socket, buffer, sizeof(buffer), 0)) == -1){
           perror("Error on recv\n");
           exit(1);
@@ -314,6 +314,6 @@ int main(int argc, char *argv[]){
       }
     }
   }
-  
+
   return 0;
 }
