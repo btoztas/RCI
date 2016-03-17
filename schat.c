@@ -110,7 +110,6 @@ int sendProtocolMessage(char *buffer, int socketfd, struct sockaddr_in serveradd
         printf("Error on recvfrom\n");
         exit(1);
       }
-
       msgReceived[n]='\0';
       printf("%s\n",msgReceived);
       i=3;
@@ -147,35 +146,41 @@ void UNR(char name[128], char surname[128], int socketfd, struct sockaddr_in ser
 }
 
 void QRY(char parametros[128], int socketfd, struct sockaddr_in serveraddr, char *contactip, char *contactport){
-  char *buffer;
+  char *buffer, *port, *ip;
   buffer = calloc(128, sizeof(char));
 
   sprintf(buffer, "QRY %s", parametros);
   printf("Mensagem enviada: %s\n", buffer);
   sendProtocolMessage(buffer, socketfd, serveraddr);
-
+  printf("%s\n",buffer);
   if(strcmp(buffer, "RPL")==0)
     printf("O cliente que deseja contactar não se encontra registado\n");
   else{
     strtok(buffer, ";");
-    contactip=strtok(NULL, ";");
-    contactport=strtok(NULL, "\0");
+    ip=strtok(NULL, ";");
+    port=strtok(NULL, "\0");
+    strcpy(contactip, ip);
+    strcpy(contactport, port);
   }
 }
 
-/**/
-void tcpConnectProtocol(int socketfd, struct sockaddr_in serveraddr){
+int tcpConnectProtocol(int socketfd, struct sockaddr_in serveraddr){
   if(connect(socketfd,(struct sockaddr*)&serveraddr,sizeof(serveraddr))==-1){
-    printf("Error connecting do contact\n");
-    exit(1);
+    printf("Error connecting to contact\n");
+    return 0;
   }
+  return 1;
 }
 
 int main(int argc, char *argv[]){
 
   int i;
   char *name, *surname,
-  ip[128], scport[128], snpip[128], snpport[128], contactip[128], contactport[128];
+  ip[128], scport[128], snpip[128], snpport[128];
+
+  char *contactip, *contactport;
+  contactport = calloc(128, sizeof(char));
+  contactip = calloc(128, sizeof(char));
 
   int sair=1;
 
@@ -188,6 +193,7 @@ int main(int argc, char *argv[]){
 
   struct sockaddr_in name_server, me_server, contact_server;
   int name_socket, me_socket, contact_socket;
+  int contact_flag = 0, me_flag = 0;
   int addrlen;
 
 
@@ -230,23 +236,34 @@ int main(int argc, char *argv[]){
   printf("name: %s\nsurname: %s\nsnpip: %s\nsnpport: %s\nsaip: %s\nscport: %s\n", name, surname, snpip, snpport, ip, scport);
 
   name_socket= newudpclient(&name_server, snpip, IP, snpport);
+  printf("name_socket = %d\n", name_socket);
 
   me_socket= newtcpserver(&me_server, scport);
+  printf("me_socket = %d\n", me_socket);
 
   if(bind(me_socket, (struct sockaddr*)&me_server, sizeof(me_server)) < 0){
-	printf("Error on binding");
-	exit(1);
+    printf("Error on binding\n");
+    exit(1);
   }
   if(listen(me_socket,2)==-1){
-    printf("Error on listening");
-	exit(1);
+    printf("Error on listening\n");
+    exit(1);
   }
-
-  FD_ZERO(&rfds);
 
   while(sair){
 
+    FD_ZERO(&rfds);
     FD_SET(STDIN, &rfds);
+    maxfd = STDIN;
+    if(contact_flag){
+      FD_SET(contact_socket, &rfds);
+      if(contact_socket>maxfd)
+        maxfd = contact_socket;
+    }if(me_flag){
+      FD_SET(me_socket, &rfds);
+      if(me_socket>maxfd)
+        maxfd = me_socket;
+    }
 
     counter = select(maxfd+1, &rfds, NULL, NULL, NULL);
 
@@ -254,45 +271,65 @@ int main(int argc, char *argv[]){
       printf("Error on select\n");
       exit(4);
     }else if(counter>0){
+
       if(FD_ISSET(STDIN, &rfds)){
         fgets(buffer, sizeof(buffer), stdin);
         len = strlen(buffer) - 1;
-        if (buffer[len] == '\n')
+
+        if(buffer[len] == '\n')
           buffer[len] = '\0';
-        sscanf(buffer, "%s %s", cabecalho, parametros);
+
+        sscanf(buffer, "%s %[^\t\n]", cabecalho, parametros);
         printf("Comando: %s\nCabecalho: %s\nParametros: %s\n", buffer, cabecalho, parametros);
+
         if(strcmp(cabecalho, "join")==0){
 
-          /*name_socket = newudpclient(&name_server, snpip, IP, snpport);*/
-          /*me_socket = newtcpserver(&me_server, scport);*/
-          /*FD_SET(name_socket, &rfds);
-          FD_SET(me_socket, &rfds);
-          maxfd=me_socket;*/
           REG(name, surname, ip, scport, name_socket, name_server);
+          me_flag = 1;
 
         }else if(strcmp(cabecalho, "leave")==0){
 
           UNR(name, surname, name_socket, name_server);
-          FD_CLR(name_socket, &rfds);
-          FD_CLR(me_socket, &rfds);
-          maxfd=STDIN;
+          me_flag = 0;
 
         }else if(strcmp(cabecalho, "find")==0){
           QRY(parametros, name_socket, name_server, contactip, contactport);
 
         }else if(strcmp(cabecalho, "connect")==0){
           QRY(parametros, name_socket, name_server, contactip, contactport);
+          printf("%s\n",contactip);
+          printf("%s\n",contactport);
           contact_socket = newtcpclient(&contact_server, contactip, contactport);
-          tcpConnectProtocol(contact_socket, contact_server);
-          FD_SET(contact_socket, &rfds);
-          maxfd=contact_socket;
+          contact_flag=1;
+          if(connect(contact_socket,(struct sockaddr*)&contact_server, sizeof(contact_server)) < 0){
+            printf("Error connecting\n");
+            close(contact_socket);
+            contact_flag=0;
+          }
+          len=read(contact_socket, buffer, sizeof(buffer));
+          printf("%d\n",len);
+          if(len==-1){
+            printf("Error on reading\n");
+            exit(1);
+          }if(len==0) {
+            printf("Other client closed connection.\n");
+            contact_flag=0;
+          }else{
+            buffer[len] = '\0';
+            printf("%s: %s\n",contactip, buffer);
+          }
 
         }else if(strcmp(cabecalho, "disconnect")==0){
-          FD_CLR(contact_socket, &rfds);
-          maxfd=me_socket;
+          close(contact_socket);
+          contact_flag=0;
 
         }else if(strcmp(cabecalho, "message")==0){
-          send(contact_socket, parametros, strlen(parametros), 0);
+          sprintf(buffer, "%s", parametros);
+
+      	  if(write(contact_socket, buffer, sizeof(buffer))==-1){
+      		  printf("Error on writing\n");
+      		  exit(1);
+      	  }
 
         }else if(strcmp(cabecalho, "exit")==0){
           sair=0;
@@ -301,26 +338,43 @@ int main(int argc, char *argv[]){
         }else{
           printf("Cabecalho (%s) do comando introduzido nao reconhecido\n", cabecalho);
         }
-      }
-      if(FD_ISSET(me_socket, &rfds) && maxfd>0){
+      }if(contact_flag){
+        if(FD_ISSET(me_socket, &rfds) && me_flag){
+          addrlen = sizeof(me_server);
+      	  if((contact_socket=accept(me_socket,(struct sockaddr *)&me_server,  &addrlen))==-1){
+      		  printf("Error on accepting\n");
+      		  exit(1);
+      	  }
+          printf("%d\n",contact_socket);
+          contact_flag = 1;
+          sprintf(buffer, "Hello, outro, you are now connected to me, %s!", ip);
 
-        addrlen = sizeof((me_server));
-        contact_socket=accept(me_socket, (struct sockaddr *)&me_server, &addrlen);
-        maxfd=contact_socket;
-        send(contact_socket, "Connected\n", strlen("Connected\n"), 0);
-      }
-
-      if(FD_ISSET(contact_socket, &rfds) && maxfd==2){
-
-        if ((len = recv(contact_socket, buffer, sizeof(buffer), 0)) == -1){
-          perror("Error on recv\n");
-          exit(1);
+          if(write(contact_socket, buffer, sizeof(buffer))==-1){
+            printf("Error on writing\n");
+            exit(1);
+          }
         }
-        buffer[len] = '\0';
-        printf("%s: %s\n",contactip, buffer);
+      }if(contact_flag){
+        if(FD_ISSET(contact_socket, &rfds) && contact_flag){
+
+          len=read(contact_socket, buffer, sizeof(buffer));
+          if(len==-1){
+            printf("Error on reading\n");
+            exit(1);
+          }if(len==0) {
+            printf("Other client closed connection.\n");
+            contact_flag=0;
+          }else{
+            buffer[len] = '\0';
+            printf("Mensagem Recebida: %s\n", buffer);
+          }
+        }
       }
     }
   }
+
+  close(me_socket);
+  close(name_socket);
 
   return 0;
 }

@@ -1,0 +1,2 @@
+./snp -n goncalves -s 194.210.229.116 -q 58000
+./schat -n jorge.goncalves -i 194.210.229.116 -p 58000 -s 194.210.229.116 -q 58000

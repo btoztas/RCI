@@ -21,8 +21,8 @@ int main(){
 	struct hostent *h;
 	struct in_addr *a;
 	int sair =1;
-	
-	
+
+
 	socketfd=socket(AF_INET, SOCK_DGRAM, 0);
 	if(socketfd==-1){
 		printf("Error opening socket\n");
@@ -35,15 +35,15 @@ int main(){
 		printf("Error on getting host\n");
 		exit(1);
 	}
-	
+
 	printf("official host name: %s\n", h->h_name);
 	a=(struct in_addr*)h->h_addr_list[0];*/
 
 	memset((void*)&serveraddr,(int)'\0',sizeof(serveraddr));
 	serveraddr.sin_family=AF_INET;
-	inet_pton(AF_INET, "194.210.224.191", &(serveraddr.sin_addr));	
+	inet_pton(AF_INET, "194.210.224.191", &(serveraddr.sin_addr));
 	serveraddr.sin_port=htons((u_short)PORT);
-	
+
 	/*if(bind(socketfd, (struct sockaddr*)&serveraddr, sizeof(serveraddr)) < 0){
 		printf("Error on binding");
 		exit(1);
@@ -66,8 +66,3 @@ int main(){
 	}
 	return 0;
 }
-
-
-
-
-
