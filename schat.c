@@ -145,23 +145,28 @@ void UNR(char name[128], char surname[128], int socketfd, struct sockaddr_in ser
   sendProtocolMessage(buffer, socketfd, serveraddr);
 }
 
-void QRY(char parametros[128], int socketfd, struct sockaddr_in serveraddr, char *contactip, char *contactport){
-  char *buffer, *port, *ip;
+int QRY(char parametros[128], int socketfd, struct sockaddr_in serveraddr, char *contactip, char *contactport){
+  char *buffer, *port, *ip, cabecalho[128];
   buffer = calloc(128, sizeof(char));
+
 
   sprintf(buffer, "QRY %s", parametros);
   printf("Mensagem enviada: %s\n", buffer);
   sendProtocolMessage(buffer, socketfd, serveraddr);
   printf("%s\n",buffer);
-  if(strcmp(buffer, "RPL")==0)
+  sscanf(buffer, "%s ", cabecalho);
+  if(strcmp(buffer, "RPL")==0){
     printf("O cliente que deseja contactar não se encontra registado\n");
-  else{
-    strtok(buffer, ";");
-    ip=strtok(NULL, ";");
-    port=strtok(NULL, "\0");
-    strcpy(contactip, ip);
-    strcpy(contactport, port);
+    return 0;
+  }if (strcmp(cabecalho, "NOK")==0) {
+    return 0;
   }
+  strtok(buffer, ";");
+  ip=strtok(NULL, ";");
+  port=strtok(NULL, "\0");
+  strcpy(contactip, ip);
+  strcpy(contactport, port);
+  return 1;
 }
 
 int tcpConnectProtocol(int socketfd, struct sockaddr_in serveraddr){
@@ -296,27 +301,30 @@ int main(int argc, char *argv[]){
           QRY(parametros, name_socket, name_server, contactip, contactport);
 
         }else if(strcmp(cabecalho, "connect")==0){
-          QRY(parametros, name_socket, name_server, contactip, contactport);
-          printf("%s\n",contactip);
-          printf("%s\n",contactport);
-          contact_socket = newtcpclient(&contact_server, contactip, contactport);
-          contact_flag=1;
-          if(connect(contact_socket,(struct sockaddr*)&contact_server, sizeof(contact_server)) < 0){
-            printf("Error connecting\n");
-            close(contact_socket);
-            contact_flag=0;
-          }
-          len=read(contact_socket, buffer, sizeof(buffer));
-          printf("%d\n",len);
-          if(len==-1){
-            printf("Error on reading\n");
-            exit(1);
-          }if(len==0) {
-            printf("Other client closed connection.\n");
-            contact_flag=0;
-          }else{
-            buffer[len] = '\0';
-            printf("%s: %s\n",contactip, buffer);
+          if(!QRY(parametros, name_socket, name_server, contactip, contactport))
+            printf("Nao foi posssivel encontrar o utilizador na rede.\n");
+          else{
+            printf("%s\n",contactip);
+            printf("%s\n",contactport);
+            contact_socket = newtcpclient(&contact_server, contactip, contactport);
+            contact_flag=1;
+            if(connect(contact_socket,(struct sockaddr*)&contact_server, sizeof(contact_server)) < 0){
+              printf("Error connecting\n");
+              close(contact_socket);
+              contact_flag=0;
+            }
+            len=read(contact_socket, buffer, sizeof(buffer));
+            printf("%d\n",len);
+            if(len==-1){
+              printf("Error on reading\n");
+              exit(1);
+            }if(len==0) {
+              printf("Other client closed connection.\n");
+              contact_flag=0;
+            }else{
+              buffer[len] = '\0';
+              printf("%s: %s\n",contactip, buffer);
+            }
           }
 
         }else if(strcmp(cabecalho, "disconnect")==0){
@@ -338,8 +346,8 @@ int main(int argc, char *argv[]){
         }else{
           printf("Cabecalho (%s) do comando introduzido nao reconhecido\n", cabecalho);
         }
-      }if(contact_flag){
-        if(FD_ISSET(me_socket, &rfds) && me_flag){
+      }if(me_flag){
+        if(FD_ISSET(me_socket, &rfds)){
           addrlen = sizeof(me_server);
       	  if((contact_socket=accept(me_socket,(struct sockaddr *)&me_server,  &addrlen))==-1){
       		  printf("Error on accepting\n");
@@ -355,7 +363,7 @@ int main(int argc, char *argv[]){
           }
         }
       }if(contact_flag){
-        if(FD_ISSET(contact_socket, &rfds) && contact_flag){
+        if(FD_ISSET(contact_socket, &rfds)){
 
           len=read(contact_socket, buffer, sizeof(buffer));
           if(len==-1){
