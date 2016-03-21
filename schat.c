@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include <time.h>
 
 #define PORT 58000
 #define STDIN 0
@@ -146,14 +147,13 @@ void UNR(char name[128], char surname[128], int socketfd, struct sockaddr_in ser
 }
 
 int QRY(char parametros[128], int socketfd, struct sockaddr_in serveraddr, char *contactip, char *contactport){
-  char *buffer, *port, *ip, cabecalho[128];
+  char *buffer, *port, *ip, cabecalho[128], parametroos[128];
   buffer = calloc(128, sizeof(char));
 
-
-  sprintf(buffer, "QRY %s", parametros);
+  sscanf(parametros, "%s", parametroos);
+  sprintf(buffer, "QRY %s", parametroos);
   printf("Mensagem enviada: %s\n", buffer);
   sendProtocolMessage(buffer, socketfd, serveraddr);
-  printf("%s\n",buffer);
   sscanf(buffer, "%s ", cabecalho);
   if(strcmp(buffer, "RPL")==0){
     printf("O cliente que deseja contactar não se encontra registado\n");
@@ -169,19 +169,11 @@ int QRY(char parametros[128], int socketfd, struct sockaddr_in serveraddr, char 
   return 1;
 }
 
-int tcpConnectProtocol(int socketfd, struct sockaddr_in serveraddr){
-  if(connect(socketfd,(struct sockaddr*)&serveraddr,sizeof(serveraddr))==-1){
-    printf("Error connecting to contact\n");
-    return 0;
-  }
-  return 1;
-}
-
 int main(int argc, char *argv[]){
 
-  int i;
-  char *name, *surname,
-  ip[128], scport[128], snpip[128], snpport[128];
+  int i, k=0, line;
+  char *reader, name[128], surname[128], contactname[128], contactsurname[128],
+  ip[128], scport[128], snpip[128], snpport[128], file[128], fileadd[128], byte[128];
 
   char *contactip, *contactport;
   contactport = calloc(128, sizeof(char));
@@ -189,17 +181,21 @@ int main(int argc, char *argv[]){
 
   int sair=1;
 
+  FILE *fp;
+
   fd_set rfds;
   int maxfd, counter;
   char buffer[128];
   int len;
 
-  char cabecalho[128], parametros[128];
+  char cabecalho[128], parametros[128], char_line[128];
 
   struct sockaddr_in name_server, me_server, contact_server;
   int name_socket, me_socket, contact_socket;
   int contact_flag = 0, me_flag = 0;
   int addrlen;
+
+  int auth_sent, auth_recv, auth_file;
 
 
   if(argc!=11){
@@ -215,8 +211,11 @@ int main(int argc, char *argv[]){
         break;
 
         case 'n':
-          name=strtok(argv[i+1], ".");
-          surname=strtok(NULL, "\0");
+          reader=strtok(argv[i+1], ".");
+          strcpy(name, reader);
+          reader=strtok(NULL, "\0");
+          strcpy(surname, reader);
+
         break;
 
         case 'q':
@@ -304,8 +303,22 @@ int main(int argc, char *argv[]){
           if(!QRY(parametros, name_socket, name_server, contactip, contactport))
             printf("Nao foi posssivel encontrar o utilizador na rede.\n");
           else{
-            printf("%s\n",contactip);
-            printf("%s\n",contactport);
+
+      			sscanf(parametros, "%s %s", cabecalho, file);
+            reader = strtok(cabecalho, ".");
+            strcpy(contactname, reader);
+            reader = strtok(NULL, "\0");
+            strcpy(contactsurname, reader);
+            printf("Name: %s\nSurname: %s\n", contactname, contactsurname);
+
+      			sprintf(fileadd,"keyfile/%s.txt", file);
+
+            fp = fopen (fileadd, "r");
+            if(fp==NULL){
+              printf("Error opening keyfile\n");
+              exit(1);
+            }
+
             contact_socket = newtcpclient(&contact_server, contactip, contactport);
             contact_flag=1;
             if(connect(contact_socket,(struct sockaddr*)&contact_server, sizeof(contact_server)) < 0){
@@ -313,8 +326,13 @@ int main(int argc, char *argv[]){
               close(contact_socket);
               contact_flag=0;
             }
+
+            sprintf(buffer, "NAME %s.%s", name, surname);
+            if(write(contact_socket, buffer, sizeof(buffer))==-1){
+              printf("Error on writing\n");
+              exit(1);
+            }
             len=read(contact_socket, buffer, sizeof(buffer));
-            printf("%d\n",len);
             if(len==-1){
               printf("Error on reading\n");
               exit(1);
@@ -323,8 +341,68 @@ int main(int argc, char *argv[]){
               contact_flag=0;
             }else{
               buffer[len] = '\0';
-              printf("%s: %s\n",contactip, buffer);
+              printf("Mensagem recebida: %s\n", buffer);
             }
+            sscanf(buffer, "%s %s", cabecalho, char_line);
+            line = atoi(char_line) - 1;
+
+            while ((fgets(byte, sizeof(byte), fp) != NULL )&&(k<line)){
+      		    k++;
+      			}
+
+            sprintf(buffer, "AUTH %s", byte);
+            if(write(contact_socket, buffer, sizeof(buffer))==-1){
+              printf("Error on writing\n");
+              exit(1);
+            }
+/*************************************/
+            srand(time(NULL));
+            auth_sent = rand() % 256;
+            printf("Sending random byte number %d.\n", auth_sent);
+            sprintf(buffer, "AUTH %d", auth_sent);
+            if(write(contact_socket, buffer, sizeof(buffer))==-1){
+              printf("Error on writing\n");
+              exit(1);
+            }
+
+            len=read(contact_socket, buffer, sizeof(buffer));
+            if(len==-1){
+              printf("Error on reading\n");
+              exit(1);
+            }if(len==0) {
+              printf("Other client closed connection.\n");
+              contact_flag=0;
+            }else{
+              buffer[len] = '\0';
+              printf("Mensagem recebida: %s\n", buffer);
+            }
+
+            sscanf(buffer, "%s %s", cabecalho, parametros);
+
+            auth_recv = atoi(parametros);
+
+            line = auth_sent - 1;
+            fp = fopen("keyfile/keyfile1.txt", "r");
+            if(fp==NULL){
+              printf("Error opening keyfile\n");
+              exit(1);
+            }
+
+
+            while ((fgets(byte, sizeof(byte), fp) != NULL )&&(k<line))
+              k++;
+
+            auth_file = atoi(byte);
+
+            printf("auth_file = %d\nauth_recv = %d\n", auth_file, auth_recv);
+
+            if(auth_file != auth_recv){
+              printf("Could not authenticate %s %s, closing connection...\n",contactname, contactsurname);
+              close(contact_socket);
+              contact_flag = 0;
+            }
+
+            fclose(fp);
           }
 
         }else if(strcmp(cabecalho, "disconnect")==0){
@@ -353,17 +431,8 @@ int main(int argc, char *argv[]){
       		  printf("Error on accepting\n");
       		  exit(1);
       	  }
-          printf("%d\n",contact_socket);
           contact_flag = 1;
-          sprintf(buffer, "Hello, outro, you are now connected to me, %s!", ip);
-
-          if(write(contact_socket, buffer, sizeof(buffer))==-1){
-            printf("Error on writing\n");
-            exit(1);
-          }
-        }
-      }if(contact_flag){
-        if(FD_ISSET(contact_socket, &rfds)){
+          printf("Someone just connected to you... trying to authenticate.\n");
 
           len=read(contact_socket, buffer, sizeof(buffer));
           if(len==-1){
@@ -374,7 +443,100 @@ int main(int argc, char *argv[]){
             contact_flag=0;
           }else{
             buffer[len] = '\0';
-            printf("Mensagem Recebida: %s\n", buffer);
+            printf("Mensagem recebida: %s\n", buffer);
+          }
+
+          sscanf(buffer, "%s %s", cabecalho, parametros);
+          reader = strtok(parametros, ".");
+          strcpy(contactname, reader);
+          reader = strtok(NULL, "\0");
+          strcpy(contactsurname, reader);
+          printf("Name: %s\nSurname: %s\n", contactname, contactsurname);
+
+          srand(time(NULL));
+          auth_sent = rand() % 256;
+          printf("Sending random byte number %d.\n", auth_sent);
+          sprintf(buffer, "AUTH %d", auth_sent);
+          if(write(contact_socket, buffer, sizeof(buffer))==-1){
+            printf("Error on writing\n");
+            exit(1);
+          }
+
+          len=read(contact_socket, buffer, sizeof(buffer));
+          if(len==-1){
+            printf("Error on reading\n");
+            exit(1);
+          }if(len==0) {
+            printf("Other client closed connection.\n");
+            contact_flag=0;
+          }else{
+            buffer[len] = '\0';
+            printf("Mensagem recebida: %s\n", buffer);
+          }
+
+          sscanf(buffer, "%s %s", cabecalho, parametros);
+
+          auth_recv = atoi(parametros);
+
+          line = auth_sent - 1;
+          fp = fopen("keyfile/keyfile1.txt", "r");
+          if(fp==NULL){
+            printf("Error opening keyfile\n");
+            exit(1);
+          }
+
+
+          while ((fgets(byte, sizeof(byte), fp) != NULL )&&(k<line))
+            k++;
+
+          auth_file = atoi(byte);
+
+          printf("auth_file = %d\nauth_recv = %d\n", auth_file, auth_recv);
+
+          if(auth_file != auth_recv){
+            printf("Could not authenticate %s %s, closing connection...\n",contactname, contactsurname);
+            close(contact_socket);
+            contact_flag = 0;
+          }
+/*************************************************/
+          len=read(contact_socket, buffer, sizeof(buffer));
+          if(len==-1){
+            printf("Error on reading\n");
+            exit(1);
+          }if(len==0) {
+            printf("Other client closed connection.\n");
+            contact_flag=0;
+          }else{
+            buffer[len] = '\0';
+            printf("Mensagem recebida: %s\n", buffer);
+          }
+          sscanf(buffer, "%s %s", cabecalho, char_line);
+          line = atoi(char_line) - 1;
+
+          while ((fgets(byte, sizeof(byte), fp) != NULL )&&(k<line)){
+            k++;
+          }
+
+          sprintf(buffer, "AUTH %s", byte);
+          if(write(contact_socket, buffer, sizeof(buffer))==-1){
+            printf("Error on writing\n");
+            exit(1);
+          }
+          fclose(fp);
+        }
+      }if(contact_flag){
+        if(FD_ISSET(contact_socket, &rfds)){
+
+          len=read(contact_socket, buffer, sizeof(buffer));
+          if(len==-1){
+            printf("Error on reading\n");
+            exit(1);
+          }if(len==0){
+            printf("Other client closed connection.\n");
+            contact_flag=0;
+          }else{
+            buffer[len] = '\0';
+            printf("%s %s: %s\n", contactname, contactsurname, buffer);
           }
         }
       }
