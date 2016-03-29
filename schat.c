@@ -132,7 +132,8 @@ int REG(char name[128], char surname[128], char ip[128], char scport[128], int s
 
   sprintf(buffer, "REG %s.%s;%s;%s", name, surname, ip, scport);
   printf("%s\n", buffer);
-  sendProtocolMessage(buffer, socketfd, serveraddr);
+  if(!sendProtocolMessage(buffer, socketfd, serveraddr))
+    return 0;
   sscanf(buffer, "%s ", cabecalho);
   if(strcmp(cabecalho, "OK")!=0&&strcmp(cabecalho, "NOK")!=0){
     printf("Could not decipher message received, you should try again...\n");
@@ -149,7 +150,8 @@ int UNR(char name[128], char surname[128], int socketfd, struct sockaddr_in serv
 
   sprintf(buffer, "UNR %s.%s", name, surname);
   printf("%s\n", buffer);
-  sendProtocolMessage(buffer, socketfd, serveraddr);
+  if(!sendProtocolMessage(buffer, socketfd, serveraddr))
+    return 0;
   sscanf(buffer, "%s ", cabecalho);
   if(strcmp(cabecalho, "OK")!=0&&strcmp(cabecalho, "NOK")!=0){
     printf("Could not decipher message received, you should try again...\n");
@@ -204,7 +206,7 @@ int main(int argc, char *argv[]){
 
   struct sockaddr_in name_server, me_server, contact_server;
   int name_socket, me_socket, contact_socket;
-  int contact_flag = 0, me_flag = 0;
+  int contact_flag = 0, me_flag = 0, join_flag=0;
   int addrlen;
 
   int auth_sent, auth_recv, auth_file;
@@ -296,9 +298,13 @@ int main(int argc, char *argv[]){
         sscanf(buffer, "%s %[^\t\n]", cabecalho, parametros);
 
         if(strcmp(cabecalho, "join")==0){
-          if(!me_flag){
-            if(REG(name, surname, ip, scport, name_socket, name_server))
+          if(!join_flag){
+            if(REG(name, surname, ip, scport, name_socket, name_server)){
               me_flag = 1;
+              join_flag = 1;
+            }else{
+              printf("Could not join the server, maybe the IP given is not correct.\n");
+            }
           }else
             printf("You're already registered in a server...\n");
 
@@ -306,10 +312,11 @@ int main(int argc, char *argv[]){
           if(contact_flag){
             printf("Please disconnect from your chat call first!\n");
           }else{
-            if(me_flag){
+            if(join_flag){
               if(!UNR(name, surname, name_socket, name_server))
                 printf("Maybe server went offline... You can exit now and try a new server IP.\n");
               me_flag = 0;
+              join_flag = 0;
 
             }else
               printf("You're not registered in a server...\n");
@@ -320,7 +327,7 @@ int main(int argc, char *argv[]){
           else
             printf("Client registered under %s:%s.\n", contactip, contactport);
         }else if(strcmp(cabecalho, "connect")==0){
-          if(!me_flag)
+          if(!join_flag)
             printf("Please join a server first.\n");
           else{
             if(!contact_flag){
@@ -343,27 +350,12 @@ int main(int argc, char *argv[]){
                   }else{
                     contact_socket = newtcpclient(&contact_server, contactip, contactport);
                     contact_flag=1;
-                    struct timeval tv;
-                    fd_set connect_status;
-                    int status=0;
-
-                    tv.tv_sec = 2;
-                    tv.tv_usec = 0;
-                    FD_ZERO(&connect_status);
-                    FD_SET(contact_socket, &connect_status);
 
                     if(connect(contact_socket,(struct sockaddr*)&contact_server, sizeof(contact_server)) < 0){
                       printf("Error connecting. Maybe user is already on session. Please try again later.\n");
                       close(contact_socket);
                       contact_flag=0;
                     }else{
-
-                      status = select(contact_socket+1, &connect_status, NULL, NULL, &tv);
-                      if(status!=0){
-
-
-
-
 
                         sprintf(buffer, "NAME %s.%s", name, surname);
 
@@ -449,13 +441,12 @@ int main(int argc, char *argv[]){
                           contact_flag = 0;
                         }else{
                   				printf("Authentification Complete! You can now send messages to each other!\n");
+                          close(me_socket);
+                          me_flag=0;
                   			}
-                      }else{
-                        printf("Connection timeout. Maybe user is already on a chat session.\n");
-                      }
                     }
+                    fclose(fp);
                   }
-                  fclose(fp);
                 }
               }else{
                 printf("Please insert a keyfile to authenticate your call.\n");
@@ -464,9 +455,22 @@ int main(int argc, char *argv[]){
               printf("You are already on a call session, please disconnect first before connecting to other users.\n");
           }
         }else if(strcmp(cabecalho, "disconnect")==0){
-          close(contact_socket);
-          contact_flag=0;
-          printf("OK\n");
+          if(contact_flag){
+            close(contact_socket);
+            contact_flag=0;
+            me_flag=1;
+            me_socket= newtcpserver(&me_server, scport);
+            if(bind(me_socket, (struct sockaddr*)&me_server, sizeof(me_server)) < 0){
+              printf("Error on binding\n");
+              exit(1);
+            }
+            if(listen(me_socket,2)==-1){
+              printf("Error on listening\n");
+              exit(1);
+            }
+            printf("OK\n");
+          }else
+            printf("You are not connected...\n");
 
         }else if(strcmp(cabecalho, "message")==0){
           if(contact_flag){
@@ -481,7 +485,7 @@ int main(int argc, char *argv[]){
         }else if(strcmp(cabecalho, "exit")==0){
           if(contact_flag){
             printf("You need to leave the chat and the name server first. Type disconnect then leave and try again.\n");
-          }else if(me_flag){
+          }else if(join_flag){
               printf("You need to leave the name server first. Type leave and try again.\n");
           }else
             sair=0;
@@ -600,8 +604,8 @@ int main(int argc, char *argv[]){
             }
             fclose(fp);
             contact_flag=1;
-          }else{
-            printf("JÁ TOU CONECTADO\n");
+            close(me_socket);
+            me_flag=0;
           }
         }
       }if(contact_flag){
@@ -613,7 +617,19 @@ int main(int argc, char *argv[]){
             exit(1);
           }if(len==0){
             printf("Other client closed connection.\n");
+            close(contact_socket);
             contact_flag=0;
+            me_flag=1;
+            me_socket= newtcpserver(&me_server, scport);
+            if(bind(me_socket, (struct sockaddr*)&me_server, sizeof(me_server)) < 0){
+              printf("Error on binding\n");
+              exit(1);
+            }
+            if(listen(me_socket,2)==-1){
+              printf("Error on listening\n");
+              exit(1);
+            }
+
           }else{
             buffer[len] = '\0';
             printf("%s %s: %s\n", contactname, contactsurname, buffer);
@@ -622,8 +638,8 @@ int main(int argc, char *argv[]){
       }
     }
   }
-
-  close(me_socket);
+  if(me_flag)
+    close(me_socket);
   close(name_socket);
 
   return 0;
