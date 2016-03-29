@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <time.h>
-#include <signal.h>
 
 #define PORT 58000
 #define STDIN 0
@@ -186,7 +185,6 @@ int QRY(char parametros[128], int socketfd, struct sockaddr_in serveraddr, char 
 
 int main(int argc, char *argv[]){
 
-
   int i, k=0, line;
   char *reader, name[128], surname[128], contactname[128], contactsurname[128],
   ip[128], scport[128], snpip[128], snpport[128], file[128], fileadd[128], byte[128];
@@ -202,7 +200,8 @@ int main(int argc, char *argv[]){
   fd_set rfds;
   int maxfd, counter;
   char buffer[128];
-  int len;
+  int len, char_line;
+  char c;
 
   char cabecalho[128], parametros[128];
 
@@ -210,15 +209,9 @@ int main(int argc, char *argv[]){
   int name_socket, me_socket, contact_socket;
   int contact_flag = 0, me_flag = 0, join_flag=0;
   int addrlen;
-  char c;
+
   int auth_sent, auth_recv, auth_file;
 
-  void (*old_handler)(int);
-
-  if((old_handler=signal(SIGPIPE, SIG_IGN))==SIG_ERR){
-    printf("Error on writing\n");
-    exit(1);
-  }
 
   if(argc!=11){
     printf("Something went wrong...\nUsage: schat -n <name>.<survame> -i <ip> -p <scport> -s <snpip> -q <snpport>\n");
@@ -347,36 +340,34 @@ int main(int argc, char *argv[]){
                 reader = strtok(NULL, "\0");
                 strcpy(contactsurname, reader);
 
-                if(strcmp(contactname, name)==0 && strcmp(contactsurname, surname)==0){
-                  printf("You can't connect to yourself!\n");
-                }else{
-                  if(!QRY(parametros, name_socket, name_server, contactip, contactport))
-                    printf("Could not find %s %s on the network.\n", contactname, contactsurname);
-                  else{
-                    printf("Client registered under %s:%s.\n", contactip, contactport);
-              			sprintf(fileadd,"keyfile/%s.txt", file);
-                    fp = fopen (fileadd, "r");
-                    if(fp==NULL){
-                      printf("Error opening keyfile. Please check your input and try again.\n");
+                if(!QRY(parametros, name_socket, name_server, contactip, contactport))
+                  printf("Could not find %s %s on the network.\n", contactname, contactsurname);
+                else{
+                  printf("Client registered under %s:%s.\n", contactip, contactport);
+            			sprintf(fileadd,"keyfile/%s.txt", file);
+                  fp = fopen (fileadd, "r");
+                  if(fp==NULL){
+                    printf("Error opening keyfile. Please check your input and try again.\n");
+                  }else{
+                    contact_socket = newtcpclient(&contact_server, contactip, contactport);
+                    contact_flag=1;
+
+                    if(connect(contact_socket,(struct sockaddr*)&contact_server, sizeof(contact_server)) < 0){
+                      printf("Error connecting. Maybe user is already on session. Please try again later.\n");
+                      close(contact_socket);
+                      contact_flag=0;
                     }else{
-                      contact_socket = newtcpclient(&contact_server, contactip, contactport);
-                      contact_flag=1;
 
-                      if(connect(contact_socket,(struct sockaddr*)&contact_server, sizeof(contact_server)) < 0){
-                        printf("Error connecting.\n");
-                        close(contact_socket);
-                        contact_flag=0;
-                      }
+                        sprintf(buffer, "NAME %s.%s", name, surname);
 
-                      sprintf(buffer, "NAME %s.%s", name, surname);
+                        if(write(contact_socket, buffer, sizeof(buffer))==-1){
+                          printf("Error on writing.\n");
+                          exit(1);
+                        }
 
-                      if(write(contact_socket, buffer, sizeof(buffer))==-1){
-                        printf("Error on writing. Maybe user is already on session. Please try again later.\n");
-                        exit(1);
-                      }else{
                         len=read(contact_socket, buffer, 6);
                         if(len==-1){
-                          printf("Error on reading. Maybe user is already on session. Please try again later.\n");
+                          printf("Error on reading.\n");
                           exit(1);
                         }if(len==0) {
                           printf("Other client closed connection.\n");
@@ -390,27 +381,33 @@ int main(int argc, char *argv[]){
                           printf("Could not decipher message received...\n");
                           exit(1);
                         }
+
                         line = (int) c;
-                        line--;
+
+			line = line - 1;
+
 
                         while ((fgets(byte, sizeof(byte), fp) != NULL )&&(k<line)){
                   		    k++;
                   			}
-                        line = atoi(byte);
-                        c = (char) line;
+
+			line=atoi(byte);
+			c = (char) line;
 
                         sprintf(buffer, "AUTH %c", c);
                         if(write(contact_socket, buffer, 6)==-1){
                           printf("Error on writing.\n");
                           exit(1);
                         }
-
+            /*************************************/
                         srand(time(NULL));
                         auth_sent = rand() % 256;
-                        c = (char) auth_sent;
                         printf("Sending random byte number %d.\n", auth_sent);
+
+			c = (char) auth_sent;
+
                         sprintf(buffer, "AUTH %c", c);
-                        if(write(contact_socket, buffer, 6)==-1){
+                        if(write(contact_socket, buffer, sizeof(buffer))==-1){
                           printf("Error on writing.\n");
                           exit(1);
                         }
@@ -432,15 +429,15 @@ int main(int argc, char *argv[]){
                           printf("Could not decipher message received...\n");
                           exit(1);
                         }
-                        auth_recv = (int)c;
+                        auth_recv = (int) c;
 
-                        line = auth_sent - 1;
+                        line = auth_sent-1;
                         fp = fopen("keyfile/keyfile1.txt", "r");
                         if(fp==NULL){
                           printf("Error opening keyfile\n");
                           exit(1);
                         }
-            			      k=0;
+			k=0;
 
                         while ((fgets(byte, sizeof(byte), fp) != NULL )&&(k<line))
                           k++;
@@ -455,10 +452,11 @@ int main(int argc, char *argv[]){
                           contact_flag = 0;
                         }else{
                   				printf("Authentification Complete! You can now send messages to each other!\n");
+                          close(me_socket);
+                          me_flag=0;
                   			}
-                      }
-                      fclose(fp);
                     }
+                    fclose(fp);
                   }
                 }
               }else{
@@ -472,6 +470,15 @@ int main(int argc, char *argv[]){
             close(contact_socket);
             contact_flag=0;
             me_flag=1;
+            me_socket= newtcpserver(&me_server, scport);
+            if(bind(me_socket, (struct sockaddr*)&me_server, sizeof(me_server)) < 0){
+              printf("Error on binding\n");
+              exit(1);
+            }
+            if(listen(me_socket,2)==-1){
+              printf("Error on listening\n");
+              exit(1);
+            }
             printf("OK\n");
           }else
             printf("You are not connected...\n");
@@ -534,7 +541,7 @@ int main(int argc, char *argv[]){
             srand(time(NULL));
             auth_sent = rand() % 256;
             printf("Sending random byte number %d.\n", auth_sent);
-            c = (char)auth_sent;
+	    c = (char) auth_sent;
             sprintf(buffer, "AUTH %c", c);
             if(write(contact_socket, buffer, 6)==-1){
               printf("Error on writing\n");
@@ -579,9 +586,7 @@ int main(int argc, char *argv[]){
               printf("Could not authenticate %s %s, closing connection...\n",contactname, contactsurname);
               close(contact_socket);
             }
-
-
-
+  /*************************************************/
             len=read(contact_socket, buffer, 6);
             if(len==-1){
               printf("Error on reading\n");
@@ -597,31 +602,25 @@ int main(int argc, char *argv[]){
               printf("Could not decipher message received...\n");
               exit(1);
             }
-            line = (int)c;
-            line--;
-      		  k=0;
-      		  fp = fopen("keyfile/keyfile1.txt", "r");
+            line = (int) c;
+            line = line - 1;
+            fp = fopen("keyfile/keyfile1.txt", "r");
             while ((fgets(byte, sizeof(byte), fp) != NULL )&&(k<line)){
               k++;
             }
+
             line = atoi(byte);
-            c=(char)line;
+	    c = (char) line;
 
             sprintf(buffer, "AUTH %c", c);
-            if(write(contact_socket, buffer, c)==-1){
+            if(write(contact_socket, buffer, 6)==-1){
               printf("Error on writing\n");
               exit(1);
             }
             fclose(fp);
             contact_flag=1;
-          }else{
-            int third_connection;
-            addrlen = sizeof(me_server);
-        	  if((third_connection=accept(me_socket,(struct sockaddr *)&me_server,  &addrlen))==-1){
-        		  printf("Error on accepting\n");
-        		  exit(1);
-        	  }
-            close(third_connection);
+            close(me_socket);
+            me_flag=0;
           }
         }
       }if(contact_flag){
@@ -635,6 +634,17 @@ int main(int argc, char *argv[]){
             printf("Other client closed connection.\n");
             close(contact_socket);
             contact_flag=0;
+            me_flag=1;
+            me_socket= newtcpserver(&me_server, scport);
+            if(bind(me_socket, (struct sockaddr*)&me_server, sizeof(me_server)) < 0){
+              printf("Error on binding\n");
+              exit(1);
+            }
+            if(listen(me_socket,2)==-1){
+              printf("Error on listening\n");
+              exit(1);
+            }
+
           }else{
             buffer[len] = '\0';
             printf("%s %s: %s\n", contactname, contactsurname, buffer);
