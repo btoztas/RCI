@@ -391,7 +391,7 @@ int main(int argc, char *argv[]){
                           exit(1);
                         }
                         line = (int) c;
-                        line--;
+                        line = line -2;
 
                         while ((fgets(byte, sizeof(byte), fp) != NULL )&&(k<line)){
                   		    k++;
@@ -578,42 +578,43 @@ int main(int argc, char *argv[]){
             if(auth_file != auth_recv){
               printf("Could not authenticate %s %s, closing connection...\n",contactname, contactsurname);
               close(contact_socket);
-            }
-
-
-
-            len=read(contact_socket, buffer, 6);
-            if(len==-1){
-              printf("Error on reading\n");
-              exit(1);
-            }if(len==0) {
-              printf("Other client closed connection.\n");
             }else{
-              buffer[6] = '\0';
-              printf("%s\n", buffer);
-            }
-            sscanf(buffer, "%s %c", cabecalho, &c);
-            if(strcmp(cabecalho, "AUTH")!=0){
-              printf("Could not decipher message received...\n");
-              exit(1);
-            }
-            line = (int)c;
-            line--;
-      		  k=0;
-      		  fp = fopen("keyfile/keyfile1.txt", "r");
-            while ((fgets(byte, sizeof(byte), fp) != NULL )&&(k<line)){
-              k++;
-            }
-            line = atoi(byte);
-            c=(char)line;
 
-            sprintf(buffer, "AUTH %c", c);
-            if(write(contact_socket, buffer, c)==-1){
-              printf("Error on writing\n");
-              exit(1);
+
+
+              len=read(contact_socket, buffer, 6);
+              if(len==-1){
+                printf("Error on reading\n");
+                exit(1);
+              }if(len==0) {
+                printf("Other client closed connection.\n");
+              }else{
+                buffer[6] = '\0';
+                printf("%s\n", buffer);
+              }
+              sscanf(buffer, "%s %c", cabecalho, &c);
+              if(strcmp(cabecalho, "AUTH")!=0){
+                printf("Could not decipher message received...\n");
+                exit(1);
+              }
+              line = (int)c;
+              line = line -2;
+        		  k=0;
+        		  fp = fopen("keyfile/keyfile1.txt", "r");
+              while ((fgets(byte, sizeof(byte), fp) != NULL )&&(k<line)){
+                k++;
+              }
+              line = atoi(byte);
+              c=(char)line;
+
+              sprintf(buffer, "AUTH %c", c);
+              if(write(contact_socket, buffer, c)==-1){
+                printf("Error on writing\n");
+                exit(1);
+              }
+              fclose(fp);
+              contact_flag=1;
             }
-            fclose(fp);
-            contact_flag=1;
           }else{
             int third_connection;
             addrlen = sizeof(me_server);
