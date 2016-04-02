@@ -192,19 +192,38 @@ int sendProtocolMessage(char *buffer, int socketfd, struct sockaddr_in serveradd
                         msgReceived[n]='\0';
                         printf("%s\n",msgReceived);
                         i=3;
-                        sent=1;
+                        sent=1; /* message sent with success */
                 }
         }
         if(!sent) {
                 printf("Could not send message. Try again later...\n");
         }
-        strcpy(buffer, msgReceived);
+        strcpy(buffer, msgReceived); /* copys message to be available on main */
         return sent;
 }
 
+
+/*
+ *  Function:
+ *    REG
+ *
+ *  Description:
+ *    sends register message to snp server. receives feedback from it with sendProtocolMessage function
+ *
+ *  Arguments:
+ *    client characteristics
+ *    snp server socket
+ *    server connection characteristics
+ *
+ *
+ *  Return value:
+ *    1/0 in case of success or failure
+ *
+ */
+
 int REG(char name[128], char surname[128], char ip[128], char scport[128], int socketfd, struct sockaddr_in serveraddr){
         char *buffer;
-        char msgHeader[128];
+        char header[128];
         buffer = calloc(128, sizeof(char));
 
         sprintf(buffer, "REG %s.%s;%s;%s", name, surname, ip, scport);
@@ -214,8 +233,8 @@ int REG(char name[128], char surname[128], char ip[128], char scport[128], int s
                 free(buffer);
                 return 0;
         }
-        sscanf(buffer, "%s ", msgHeader);
-        if(strcmp(msgHeader, "OK")!=0&&strcmp(msgHeader, "NOK")!=0) {
+        sscanf(buffer, "%s ", header);
+        if(strcmp(header, "OK")!=0&&strcmp(header, "NOK")!=0) {
                 printf("Could not decipher message received, you should try again...\n");
                 free(buffer);
                 return 0;
@@ -225,10 +244,28 @@ int REG(char name[128], char surname[128], char ip[128], char scport[128], int s
 
 }
 
+/*
+ *  Function:
+ *    UNR
+ *
+ *  Description:
+ *    sends unregister message to snp server. receives feedback from it with sendProtocolMessage function
+ *
+ *  Arguments:
+ *    client characteristics
+ *    snp server socket
+ *    server connection characteristics
+ *
+ *
+ *  Return value:
+ *    1/0 in case of success or failure
+ *
+ */
+
 int UNR(char name[128], char surname[128], int socketfd, struct sockaddr_in serveraddr){
 
         char *buffer;
-        char msgHeader[128];
+        char header[128];
         buffer = calloc(128, sizeof(char));
 
         sprintf(buffer, "UNR %s.%s", name, surname);
@@ -237,8 +274,8 @@ int UNR(char name[128], char surname[128], int socketfd, struct sockaddr_in serv
                 return 0;
                 free(buffer);
         }
-        sscanf(buffer, "%s ", msgHeader);
-        if(strcmp(msgHeader, "OK")!=0&&strcmp(msgHeader, "NOK")!=0) {
+        sscanf(buffer, "%s ", header);
+        if(strcmp(header, "OK")!=0&&strcmp(header, "NOK")!=0) {
                 printf("Could not decipher message received, you should try again...\n");
                 return 0;
         }
@@ -246,20 +283,39 @@ int UNR(char name[128], char surname[128], int socketfd, struct sockaddr_in serv
         return 1;
 }
 
+
+/*
+ *  Function:
+ *    QRY
+ *
+ *  Description:
+ *    implements QRY protocol on schat
+ *
+ *  Arguments:
+ *    client characteristics
+ *    snp server socket
+ *    server connection characteristics
+ *
+ *
+ *  Return value:
+ *    1/0 in case of success or failure
+ *    saves found client ip and port on contactport and contactip
+ *
+ */
+
 int QRY(char parametros[128], int socketfd, struct sockaddr_in serveraddr, char *contactip, char *contactport){
-        char *buffer, *port, *ip, msgHeader[128], parametroos[128];
+        char *buffer, *port, *ip, header[128];
         buffer = calloc(128, sizeof(char));
 
-        sscanf(parametros, "%s", parametroos);
-        sprintf(buffer, "QRY %s", parametroos);
+        sprintf(buffer, "QRY %s", parametros);
         printf("%s\n", buffer);
         sendProtocolMessage(buffer, socketfd, serveraddr);
-        sscanf(buffer, "%s ", msgHeader);
+        sscanf(buffer, "%s ", header);
 
         if(strcmp(buffer, "RPL")==0) {
                 free(buffer);
                 return 0;
-        } if(strcmp(msgHeader, "NOK")==0) {
+        } if(strcmp(header, "NOK")==0) {
                 free(buffer);
                 return 0;
         }
@@ -271,6 +327,22 @@ int QRY(char parametros[128], int socketfd, struct sockaddr_in serveraddr, char 
         free(buffer);
         return 1;
 }
+
+/*
+ *  Function:
+ *    read_string
+ *
+ *  Description:
+ *    reads and dynamic allocates memory for a stdin input
+ *
+ *  Arguments:
+ *    none
+ *
+ *
+ *  Return value:
+ *    pointer to string read
+ *
+ */
 
 char * read_string(void){
         char *str = (char*)malloc(sizeof(char));
@@ -319,11 +391,11 @@ int main(int argc, char *argv[]){
         char *input;
         int len;
 
-        char msgHeader[128], *parametros;
+        char header[128], *parametros;
 
         struct sockaddr_in name_server, me_server, contact_server;
         int name_socket, me_socket, contact_socket;
-        int contact_flag = 0, me_flag = 0, join_flag=0;
+        int contact_flag = 0, me_flag = 0, join_flag=0; /*helping flags to manage the program state. eg, when in connection with another user, contact_flag is 1*/
         unsigned int addrlen;
         unsigned char c;
         unsigned int auth_sent, auth_recv, auth_file, line;
@@ -335,10 +407,10 @@ int main(int argc, char *argv[]){
                 exit(1);
         }
 
-        if(argc!=11) {
+        if(argc!=11) { /* Number of arguments inserted is not correct */
                 printf("Something went wrong...\nUsage: schat -n <name>.<survame> -i <ip> -p <scport> -s <snpip> -q <snpport>\n");
                 exit(4);
-        }else{
+        }else{ /*Reading each one of the arguments */
                 for(i=1; i<argc; i=i+2) {
 
                         switch(argv[i][1]) {
@@ -376,8 +448,10 @@ int main(int argc, char *argv[]){
         }
         printf("Hello %s %s! You are under the IP %s:%s. To register on %s:%s type join.\n", name, surname, snpip, snpport, ip, scport);
 
+        /* creating udp client to connect with snp server */
         name_socket= newudpclient(&name_server, snpip, IP, snpport);
 
+        /* tcp server to receive connect requests from other schats */
         me_socket= newtcpserver(&me_server, scport);
 
         if(bind(me_socket, (struct sockaddr*)&me_server, sizeof(me_server)) < 0) {
@@ -390,7 +464,8 @@ int main(int argc, char *argv[]){
         }
 
         while(sair) {
-
+                /* on each cicle, we SET only the file decriptors needed, eg. if we are joined to a snp server, theres no need to
+                set the udp client socket or the tcp server socket even though they exist */
                 parametrosFlag = 0;
                 FD_ZERO(&rfds);
                 FD_SET(STDIN, &rfds);
@@ -414,20 +489,19 @@ int main(int argc, char *argv[]){
 
                         if(FD_ISSET(STDIN, &rfds)) {
 
-                                input = read_string();
-                                if(strlen(input)>0) {
-                                        sscanf(input, "%s ", msgHeader);
+                                input = read_string();  /* read from stdin */
+                                if(strlen(input)>0) { /* this is to avoid cases where user clicks on ENTER with nothing written */
+                                        sscanf(input, "%s ", header); /* read header from input */
 
-
-                                        printf("%d %d\n", (unsigned int)strlen(input), (unsigned int)strlen(msgHeader) );
-                                        if(strlen(input) != strlen(msgHeader)) {
-                                                parametros =  calloc(strlen(input) - strlen(msgHeader), sizeof(char));
-                                                sscanf(input, "%s %[^\t\n]", msgHeader, parametros);
+                                        if(strlen(input) != strlen(header)) { /* if there is more than the header to read, like the message command, we need to alloc mpore memory for those parammeters */
+                                                parametros =  calloc(strlen(input) - strlen(header), sizeof(char));
+                                                sscanf(input, "%s %[^\t\n]", header, parametros);
                                                 parametrosFlag = 1;
                                         }
-                                        printf("HEEEUY\n" );
 
-                                        if(strcmp(msgHeader, "join")==0) {
+
+
+                                        if(strcmp(header, "join")==0) {
                                                 if(!join_flag) {
                                                         if(REG(name, surname, ip, scport, name_socket, name_server)) {
                                                                 me_flag = 1;
@@ -438,7 +512,10 @@ int main(int argc, char *argv[]){
                                                 }else
                                                         printf("You're already registered in a server...\n");
 
-                                        }else if(strcmp(msgHeader, "leave")==0) {
+
+
+
+                                        }else if(strcmp(header, "leave")==0) {
                                                 if(contact_flag) {
                                                         printf("Please disconnect from your chat call first!\n");
                                                 }else{
@@ -451,20 +528,30 @@ int main(int argc, char *argv[]){
                                                         }else
                                                                 printf("You're not registered in a server...\n");
                                                 }
-                                        }else if(strcmp(msgHeader, "find")==0) {
+
+
+
+
+
+                                        }else if(strcmp(header, "find")==0) {
                                                 if(!QRY(parametros, name_socket, name_server, contactip, contactport))
                                                         printf("Could not find %s on the network.\n", parametros);
                                                 else
                                                         printf("Client registered under %s:%s.\n", contactip, contactport);
-                                        }else if(strcmp(msgHeader, "connect")==0) {
+
+
+
+
+
+                                        }else if(strcmp(header, "connect")==0) {
                                                 if(!join_flag)
                                                         printf("Please join a server first.\n");
                                                 else{
                                                         if(!contact_flag) {
 
                                                                 k=0;
-                                                                if(sscanf(parametros, "%s %s", msgHeader, file)==2) {
-                                                                        reader = strtok(msgHeader, ".");
+                                                                if(sscanf(parametros, "%s %s", header, file)==2) {
+                                                                        reader = strtok(header, ".");
                                                                         strcpy(contactname, reader);
                                                                         reader = strtok(NULL, "\0");
                                                                         strcpy(contactsurname, reader);
@@ -506,8 +593,8 @@ int main(int argc, char *argv[]){
                                                                                                         }else{
                                                                                                                 buffer[6] = '\0';
                                                                                                         }
-                                                                                                        sscanf(buffer, "%s %c", msgHeader, &c);
-                                                                                                        if(strcmp(msgHeader, "AUTH")!=0) {
+                                                                                                        sscanf(buffer, "%s %c", header, &c);
+                                                                                                        if(strcmp(header, "AUTH")!=0) {
                                                                                                                 printf("Could not decipher message received...\n");
                                                                                                                 exit(1);
                                                                                                         }
@@ -551,8 +638,8 @@ int main(int argc, char *argv[]){
                                                                                                                 buffer[6] = '\0';
                                                                                                         }
 
-                                                                                                        sscanf(buffer, "%s %c", msgHeader, &c);
-                                                                                                        if(strcmp(msgHeader, "AUTH")!=0) {
+                                                                                                        sscanf(buffer, "%s %c", header, &c);
+                                                                                                        if(strcmp(header, "AUTH")!=0) {
                                                                                                                 printf("Could not decipher message received...\n");
                                                                                                                 exit(1);
                                                                                                         }
@@ -593,7 +680,7 @@ int main(int argc, char *argv[]){
                                                         }else
                                                                 printf("You are already on a call session, please disconnect first before connecting to other users.\n");
                                                 }
-                                        }else if(strcmp(msgHeader, "disconnect")==0) {
+                                        }else if(strcmp(header, "disconnect")==0) {
                                                 if(contact_flag) {
                                                         close(contact_socket);
                                                         contact_flag=0;
@@ -602,7 +689,7 @@ int main(int argc, char *argv[]){
                                                 }else
                                                         printf("You are not connected...\n");
 
-                                        }else if(strcmp(msgHeader, "message")==0) {
+                                        }else if(strcmp(header, "message")==0) {
 
                                                 if(contact_flag) {
                                                         int nwritten=0, nleft=0;
@@ -623,26 +710,24 @@ int main(int argc, char *argv[]){
                                                         }
                                                 }else
                                                         printf("You are not connected... use connect <name>.<surname> <keyfile> first.\n");
-                                        }else if(strcmp(msgHeader, "exit")==0) {
+                                        }else if(strcmp(header, "exit")==0) {
                                                 if(contact_flag) {
                                                         printf("You need to leave the chat and the name server first. Type disconnect then leave and try again.\n");
                                                 }else if(join_flag) {
                                                         printf("You need to leave the name server first. Type leave and try again.\n");
                                                 }else
                                                         sair=0;
-                                        }else if(strcmp(msgHeader, "clear")==0) {
+                                        }else if(strcmp(header, "clear")==0) {
                                                 printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
                                         }else{
-                                                printf("Header (%s) is not valid.\n", msgHeader);
-                                        }
-                                        if(strlen(input)>0) {
-                                                memset(input, '\0', strlen(input));
-                                                free(input);
+                                                printf("Header (%s) is not valid.\n", header);
                                         }
                                         if (parametrosFlag) {
                                                 free(parametros);
                                         }
                                 }
+                                memset(input, '\0', strlen(input));
+                                free(input);
                         } if(me_flag) {
                                 if(FD_ISSET(me_socket, &rfds)) {
                                         if(!contact_flag) {
@@ -664,8 +749,8 @@ int main(int argc, char *argv[]){
                                                         buffer[len] = '\0';
                                                 }
 
-                                                sscanf(buffer, "%s %s", msgHeader, contact_cred);
-                                                if(strcmp(msgHeader, "NAME")!=0) {
+                                                sscanf(buffer, "%s %s", header, contact_cred);
+                                                if(strcmp(header, "NAME")!=0) {
                                                         printf("Could not decipher message received...\n");
                                                         exit(1);
                                                 }
@@ -694,8 +779,8 @@ int main(int argc, char *argv[]){
                                                         buffer[6] = '\0';
                                                 }
 
-                                                sscanf(buffer, "%s %c", msgHeader, &c);
-                                                if(strcmp(msgHeader, "AUTH")!=0) {
+                                                sscanf(buffer, "%s %c", header, &c);
+                                                if(strcmp(header, "AUTH")!=0) {
                                                         printf("Could not decipher message received...\n");
                                                         exit(1);
                                                 }
@@ -736,8 +821,8 @@ int main(int argc, char *argv[]){
                                                                 }else{
                                                                         buffer[6] = '\0';
                                                                 }
-                                                                sscanf(buffer, "%s %c", msgHeader, &c);
-                                                                if(strcmp(msgHeader, "AUTH")!=0) {
+                                                                sscanf(buffer, "%s %c", header, &c);
+                                                                if(strcmp(header, "AUTH")!=0) {
                                                                         printf("Could not decipher message received...\n");
                                                                         exit(1);
                                                                 }
